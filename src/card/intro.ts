@@ -64,29 +64,29 @@ function countPromotions(target: RarityPreset): number {
 }
 
 /**
+ * 入り演出の長さ（秒）。
+ *
+ * レアリティによらず一定にしている。段数に比例させると下位レアリティの前振りが
+ * 一瞬で終わってしまい、演出として物足りなくなるため。上位らしさは
+ * 「同じ時間の中で何段上がるか」と「光の強さ」で出す。
+ */
+const INTRO_SECONDS = 1.8;
+
+/**
  * 入り演出の長さを決める。
  *
- * 白から本来の色まで 1 段ずつ上がるので、上位のレアリティほど通る段数が多い。
- * 段数に比例して長さを伸ばし、上位ほど長く引っ張られるようにしている。
- *
- * @param target - 最終的に落ち着くレアリティ
  * @param duration - 全体の尺（秒）
  * @param enabled - 入り演出を出すかどうか
  * @returns 入り演出の長さ（秒）。無効なら 0
  *
  * @example
- * computeIntroDuration(getRarity("white"), 4, true);   // => 0.55（昇格なし）
- * computeIntroDuration(getRarity("rainbow"), 4, true); // => 1.8（5 段上がる）
+ * computeIntroDuration(8, true); // => 1.8
+ * computeIntroDuration(2, true); // => 0.9（尺が短いので詰められる）
  */
-export function computeIntroDuration(
-  target: RarityPreset,
-  duration: number,
-  enabled: boolean,
-): number {
+export function computeIntroDuration(duration: number, enabled: boolean): number {
   if (!enabled) return 0;
-  const wanted = 0.55 + countPromotions(target) * 0.25;
   // 尺の半分近くを前振りに使うとカードを見せる時間が残らないので頭打ちにする
-  return Math.min(wanted, duration * 0.45);
+  return Math.min(INTRO_SECONDS, duration * 0.45);
 }
 
 /**

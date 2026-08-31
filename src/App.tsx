@@ -116,8 +116,8 @@ export function App() {
   const rarity = getRarity(rarityId);
   // null は「上書きしていない」の意味なので、レアリティ側の既定値に落とす
   const effectiveBadge = badge ?? rarity.badge;
-  // 上位ほど通る段数が多く、そのぶん前振りが長くなる
-  const introDuration = computeIntroDuration(rarity, duration, introMode === "on");
+  // 長さはレアリティによらず一定。変わるのは同じ時間に何段上がるか
+  const introDuration = computeIntroDuration(duration, introMode === "on");
   // 尺を伸ばすとファイルがどれだけ膨らむかを、書き出す前に見せる
   const estimatedSizeMb = (quality.bitrate * duration) / 8 / 1024 / 1024;
   const promotionCount = RARITY_PRESETS.findIndex((preset) => preset.id === rarityId);
