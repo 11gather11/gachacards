@@ -147,7 +147,7 @@ export function createIntroParticles(count: number, seed: number): IntroParticle
       startRadius: randomBetween(rng, 0.2, 0.45),
       // 弾ける直前まで吸い込みが続くよう、出現を演出の前半〜中盤に散らす
       delay: randomBetween(rng, 0, 0.7),
-      travelSeconds: randomBetween(rng, 0.35, 0.7),
+      travelSeconds: randomBetween(rng, 0.22, 0.45),
       size: randomBetween(rng, 0.004, 0.012),
       swirl: randomBetween(rng, -1.2, 1.2),
     });
@@ -171,7 +171,7 @@ export function currentStage(stages: readonly IntroStage[], p: number): IntroSta
 }
 
 /** 昇格の合図を見せる長さ（秒）。演出の長さによらず一定にする。 */
-const PROMOTION_FLASH_SECONDS = 0.18;
+const PROMOTION_FLASH_SECONDS = 0.14;
 
 /**
  * 直前の色替わりからどれだけ経ったかを 0-1 で返す。1 なら十分時間が経っている。
@@ -286,7 +286,7 @@ export function drawIntro(
 
   // 溜めと弾けを分ける。弾けはカードの登場に重なる。
   // 弾ける速さは演出の長さによらず一定にしたいので、秒で切り出す
-  const burstSeconds = Math.min(0.22, introDuration * 0.35);
+  const burstSeconds = Math.min(0.18, introDuration * 0.35);
   const burstStart = introDuration - burstSeconds;
   // 光の立ち上がりも実時間で決める。演出全体の進行に紐づけると、
   // 尺の長い上位レアリティほど光り始めがゆっくりになってしまう
@@ -311,7 +311,7 @@ export function drawIntro(
   );
   ctx.save();
   // 角速度は秒あたりで決める。正規化時刻で回すと長い演出ほど回転が鈍くなる
-  ctx.rotate(time * 1.6);
+  ctx.rotate(time * 2.6);
   ctx.globalAlpha = 0.45 * grow * (1 - burst * 0.4);
   for (let i = 0; i < rayCount; i++) {
     const angle = (i / rayCount) * Math.PI * 2;
@@ -337,7 +337,7 @@ export function drawIntro(
   // 収束の周期も秒で決める。演出が長いレアリティでも吸い込む速さは変わらない
   const ringCount = 5;
   for (let i = 0; i < ringCount; i++) {
-    const t = (time * 1.35 + i / ringCount) % 1;
+    const t = (time * 2.2 + i / ringCount) % 1;
     drawSoftRing(
       ctx,
       maxRadius * (1 - easeOutCubic(t)),
@@ -432,7 +432,7 @@ export function drawIntro(
   }
 
   // 中心の光球。溜めるほど大きく、昇格の瞬間に一段膨らむ
-  const pulseScale = 1 + 0.1 * Math.sin(time * 26) * grow;
+  const pulseScale = 1 + 0.1 * Math.sin(time * 34) * grow;
   const orbRadius =
     unit *
     (0.025 + 0.13 * easeOutCubic(grow)) *
