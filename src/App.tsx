@@ -3,8 +3,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageDropZone } from "./components/ImageDropZone.tsx";
 import { PreviewCanvas } from "./components/PreviewCanvas.tsx";
 import { RarityPicker } from "./components/RarityPicker.tsx";
-import type { IntroMode, PromotionStep } from "./card/intro.ts";
-import { buildIntroStages, computeIntroDuration, createIntroParticles } from "./card/intro.ts";
+import type { IntroMode } from "./card/intro.ts";
+import {
+  buildIntroStages,
+  computeIntroDuration,
+  createIntroParticles,
+  listIntermediateRarities,
+} from "./card/intro.ts";
 import { createParticles } from "./card/particles.ts";
 import type { RarityId } from "./card/rarity.ts";
 import { getRarity } from "./card/rarity.ts";
@@ -53,7 +58,7 @@ export function App() {
   const [duration, setDuration] = useState(INITIAL.duration);
   const [fps, setFps] = useState<number>(INITIAL.fps);
   const [introMode, setIntroMode] = useState<IntroMode>(INITIAL.introMode);
-  const [promotionStep, setPromotionStep] = useState<PromotionStep>(INITIAL.promotionStep);
+  const [via, setVia] = useState<RarityId[]>(INITIAL.via);
   const [orientation, setOrientation] = useState<Orientation>(INITIAL.orientation);
   const [sizeId, setSizeId] = useState(INITIAL.sizeId);
   const [qualityId, setQualityId] = useState(INITIAL.qualityId);
@@ -81,7 +86,7 @@ export function App() {
       duration,
       fps,
       introMode,
-      promotionStep,
+      via,
       orientation,
       sizeId,
       qualityId,
@@ -96,7 +101,7 @@ export function App() {
     duration,
     fps,
     introMode,
-    promotionStep,
+    via,
     orientation,
     sizeId,
     qualityId,
@@ -124,10 +129,9 @@ export function App() {
   // 尺を伸ばすとファイルがどれだけ膨らむかを、書き出す前に見せる
   const estimatedSizeMb = (quality.bitrate * duration) / 8 / 1024 / 1024;
   // 段取りは表示にも使うので、シーンと同じものをここで組み立てて共有する
-  const introStages = useMemo(
-    () => buildIntroStages(rarity, promotionStep),
-    [rarity, promotionStep],
-  );
+  const introStages = useMemo(() => buildIntroStages(rarity, via), [rarity, via]);
+  // 白と目的の色は必ず通るので、選べるのはその間の色だけ
+  const intermediates = listIntermediateRarities(rarity);
 
   const scene = useMemo<CardScene>(() => {
     const card = computeCardSize(size.width, size.height);
@@ -305,15 +309,43 @@ export function App() {
           </label>
           {introMode === "on" && (
             <>
-              <select
-                className="input"
-                value={promotionStep}
-                onChange={(event) => setPromotionStep(event.target.value as PromotionStep)}
-              >
-                <option value="all">全段（1 段ずつ上がる）</option>
-                <option value="skip">間引き（途中を飛ばす）</option>
-                <option value="jump">一気に（白から一撃）</option>
-              </select>
+              {intermediates.length > 0 && (
+                <>
+                  <span className="field__label">途中で通す色（外すと飛ばす）</span>
+                  <div className="via">
+                    {intermediates.map((preset) => (
+                      <label key={preset.id} className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={via.includes(preset.id)}
+                          onChange={(event) =>
+                            setVia((current) =>
+                              event.target.checked
+                                ? [...current, preset.id]
+                                : current.filter((id) => id !== preset.id),
+                            )
+                          }
+                        />
+                        {preset.label}
+                      </label>
+                    ))}
+                    <button
+                      type="button"
+                      className="button button--slim"
+                      onClick={() => setVia(intermediates.map((preset) => preset.id))}
+                    >
+                      全部
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--slim"
+                      onClick={() => setVia([])}
+                    >
+                      一気に
+                    </button>
+                  </div>
+                </>
+              )}
               <p className="notice">
                 {introStages.map((stage) => stage.rarity.label).join(" → ")}
                 {" / "}

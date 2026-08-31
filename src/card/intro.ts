@@ -10,21 +10,12 @@
  */
 
 import { createRng, easeOutCubic, progress, pulse, randomBetween } from "./math.ts";
-import type { RarityPreset } from "./rarity.ts";
+import type { RarityId, RarityPreset } from "./rarity.ts";
 import { RARITY_PRESETS } from "./rarity.ts";
 import type { Canvas2dContext } from "./render.ts";
 
 /** UI から選ぶ入り演出の設定。`"off"` なら演出そのものを出さない。 */
 export type IntroMode = "off" | "on";
-
-/** 白から目的の色まで、どう刻んで上がるか。 */
-export type PromotionStep =
-  /** 保留カラーを 1 段ずつすべて通る */
-  | "all"
-  /** 途中の色をひとつだけ挟んで飛ばす */
-  | "skip"
-  /** 白から目的の色へ一撃で飛ぶ */
-  | "jump";
 
 /** 光の色が切り替わる 1 段階。 */
 export interface IntroStage {
@@ -99,42 +90,45 @@ export function computeIntroDuration(duration: number, enabled: boolean): number
 }
 
 /**
+ * 目的の色に着地するまでに、途中で通せる色を返す。
+ *
+ * 白と目的の色は必ず通るので、選べるのはその間にある色だけ。
+ *
+ * @param target - 最終的に落ち着くレアリティ
+ * @returns 間に挟める色のプリセット。白と、白の 1 段上が目的の場合は空配列
+ */
+export function listIntermediateRarities(target: RarityPreset): RarityPreset[] {
+  return RARITY_PRESETS.slice(1, countPromotions(target));
+}
+
+/**
  * 色の段取りを組み立てる。
  *
- * 光は必ず白から始まり、目的の色に着地する。途中をどう刻むかは `step` で決まる。
+ * 光は必ず白から始まり、目的の色に着地する。その間にどの色を通すかは `via` で決まる。
  * 乱数を使わないので、同じ組み合わせなら毎回同じ段取りになる。
  *
  * @param target - 最終的に落ち着くレアリティ
- * @param step - 白から目的の色までの刻み方
+ * @param via - 途中で通す色。目的の色より上のものや、白・目的の色自身は無視される
  * @returns `at` の昇順に並んだ段階の配列。先頭は必ず白（`at` は 0）
  *
  * @example
- * buildIntroStages(getRarity("rainbow"), "all");  // 白 → 青 → 緑 → 赤 → 金 → 虹
- * buildIntroStages(getRarity("rainbow"), "skip"); // 白 → 緑 → 虹
- * buildIntroStages(getRarity("rainbow"), "jump"); // 白 → 虹
+ * buildIntroStages(getRarity("rainbow"), ["blue", "green", "red", "gold"]); // 白→青→緑→赤→金→虹
+ * buildIntroStages(getRarity("rainbow"), ["red"]);                          // 白→赤→虹
+ * buildIntroStages(getRarity("rainbow"), []);                               // 白→虹
  */
-export function buildIntroStages(target: RarityPreset, step: PromotionStep): IntroStage[] {
-  const targetIndex = countPromotions(target);
-  if (targetIndex === 0) return [{ at: 0, rarity: target }];
+export function buildIntroStages(target: RarityPreset, via: readonly RarityId[]): IntroStage[] {
+  if (countPromotions(target) === 0) return [{ at: 0, rarity: target }];
 
-  // 通る色を決める。先頭は必ず白、末尾は必ず目的の色
-  const path = [0];
-  if (step === "all") {
-    for (let i = 1; i <= targetIndex; i++) path.push(i);
-  } else {
-    // 間引きは中間の色をひとつだけ挟む。青のように 1 段しかない場合は
-    // 挟める色がないので、結果的に一撃と同じ道のりになる
-    const middle = step === "skip" ? Math.floor(targetIndex / 2) : 0;
-    if (middle > 0) path.push(middle);
-    path.push(targetIndex);
-  }
+  // 白と目的の色は必ず通る。間の色は指定されたものだけを、信頼度の低い順に挟む
+  const middle = listIntermediateRarities(target).filter((preset) => via.includes(preset.id));
+  const path = [RARITY_PRESETS[0]!, ...middle, target];
 
   const hops = path.length - 1;
-  return path.map((rarityIndex, i) => ({
+  return path.map((rarity, index) => ({
     // 白をひと呼吸見せてから上げ始め、最後の色は弾ける前に必ず出しておく。
-    // 刻み方が変わっても着地の時刻は動かないので、溜めの長さが一定になる
-    at: i === 0 ? 0 : 0.2 + (0.55 * i) / hops,
-    rarity: RARITY_PRESETS[rarityIndex]!,
+    // 通る色が減っても着地の時刻は動かないので、溜めの長さが一定になる
+    at: index === 0 ? 0 : 0.2 + (0.55 * index) / hops,
+    rarity,
   }));
 }
 

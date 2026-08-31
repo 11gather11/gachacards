@@ -6,7 +6,7 @@
  * 前回と同じカードを作り直せなくなるため、設定一式を保存している。
  */
 
-import type { IntroMode, PromotionStep } from "./card/intro.ts";
+import type { IntroMode } from "./card/intro.ts";
 import type { RarityId } from "./card/rarity.ts";
 import type { Orientation } from "./types.ts";
 
@@ -25,8 +25,8 @@ export interface Settings {
   fps: number;
   /** カードが出る前の共通演出の出し方。 */
   introMode: IntroMode;
-  /** 白から目的の色まで、どう刻んで上がるか。 */
-  promotionStep: PromotionStep;
+  /** 白から目的の色に上がるまでに、途中で通す色。 */
+  via: RarityId[];
   /** カードの向き。 */
   orientation: Orientation;
   /** {@link SIZE_PRESETS} の ID。 */
@@ -49,7 +49,8 @@ export const DEFAULT_SETTINGS: Settings = {
   duration: 8,
   fps: 30,
   introMode: "on",
-  promotionStep: "all",
+  // 既定は途中の色をすべて通る（1 段ずつ上がる）
+  via: ["blue", "green", "red", "gold"],
   // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする
   orientation: "landscape",
   sizeId: "md",
