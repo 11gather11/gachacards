@@ -63,6 +63,11 @@ interface CardBox {
   height: number;
   /** 角丸の半径（px）。 */
   radius: number;
+  /**
+   * 短辺の長さ（px）。枠の太さや文字の大きさはここを基準にする。
+   * 幅を基準にすると、横向きのカードで枠も文字も引き伸ばされてしまう。
+   */
+  unit: number;
 }
 
 /**
@@ -79,18 +84,25 @@ export function computeTimeline(duration: number, loop: boolean): Timeline {
 }
 
 /**
- * フレームの高さからカードの寸法を求める。
+ * フレームの大きさからカードの寸法を求める。
  *
  * パーティクルの生成にも同じ寸法が要るので、描画側と呼び出し側で
  * 値がズレないよう計算はここだけに置く。
  *
+ * @param frameWidth - 出力フレームの幅（px）
  * @param frameHeight - 出力フレームの高さ（px）
  */
-export function computeCardSize(frameHeight: number): { width: number; height: number } {
-  // カードは 2:3 に固定。金や虹のグローはカード幅の 3 割ほど外に伸びるので、
+export function computeCardSize(
+  frameWidth: number,
+  frameHeight: number,
+): { width: number; height: number } {
+  // フレームが横長ならカードも寝かせる。縦横比は 2:3 のまま向きだけ入れ替える
+  const isLandscape = frameWidth > frameHeight;
+  // カードは 2:3 に固定。金や虹のグローはカード短辺の 3 割ほど外に伸びるので、
   // それを飲み込めるだけの余白がフレーム側に残る大きさにしている
-  const height = frameHeight * 0.64;
-  return { width: height * (2 / 3), height };
+  const long = (isLandscape ? frameWidth : frameHeight) * 0.64;
+  const short = long * (2 / 3);
+  return isLandscape ? { width: long, height: short } : { width: short, height: long };
 }
 
 /** フェード合成に使う中間レイヤー。 */
@@ -132,8 +144,9 @@ function acquireLayer(target: Canvas2dContext, width: number, height: number): L
 
 /** 出力サイズからカードの矩形を決める。 */
 function computeCardBox(scene: CardScene): CardBox {
-  const { width, height } = computeCardSize(scene.height);
-  return { width, height, radius: width * 0.055 };
+  const { width, height } = computeCardSize(scene.width, scene.height);
+  const unit = Math.min(width, height);
+  return { width, height, radius: unit * 0.055, unit };
 }
 
 /** 角丸矩形のパスを、中心原点で引く。 */
@@ -255,7 +268,7 @@ function computeGlowBlur(scene: CardScene, box: CardBox, scale: number, strength
   // 余白いっぱいまで使うと端で完全に 0 になりきらないので、少し内側で止める。
   // 得られた上限は拡大後の値なので、ローカル座標に戻してから使う
   const maxBlur = (margin * 0.85) / scale;
-  return Math.min(box.width * 0.28 * strength, maxBlur);
+  return Math.min(box.unit * 0.28 * strength, maxBlur);
 }
 
 /** 枠に使うグラデーションを作る。虹だけは時間で回るコニックグラデーションにする。 */
@@ -380,25 +393,28 @@ function drawLabels(ctx: Canvas2dContext, scene: CardScene, box: CardBox): void 
   const { title, subtitle, rarity, badge } = scene;
 
   if (title) {
-    const bandHeight = box.height * 0.16;
-    const bandTop = box.height / 2 - bandHeight - box.width * 0.045;
+    // 帯の厚みは文字の大きさに追従させる。カードの高さを基準にすると、
+    // 横向きのときに帯だけが不釣り合いに薄くなる
+    const bandHeight = box.unit * 0.24;
+    const bandTop = box.height / 2 - bandHeight - box.unit * 0.045;
     // 文字が読めるよう、帯は下に向かって濃くする
     const band = ctx.createLinearGradient(0, bandTop, 0, bandTop + bandHeight);
     band.addColorStop(0, "rgba(0,0,0,0)");
     band.addColorStop(0.45, "rgba(0,0,0,0.72)");
     band.addColorStop(1, "rgba(0,0,0,0.86)");
     ctx.fillStyle = band;
-    ctx.fillRect(-box.width / 2, bandTop, box.width, bandHeight + box.width * 0.05);
+    ctx.fillRect(-box.width / 2, bandTop, box.width, bandHeight + box.unit * 0.05);
 
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = "#ffffff";
-    ctx.font = `700 ${box.width * 0.098}px "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif`;
+    ctx.font = `700 ${box.unit * 0.098}px "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif`;
+    // 折り返しはできないので、はみ出す長さは maxWidth で詰めさせる
     ctx.fillText(title, 0, bandTop + bandHeight * 0.62, box.width * 0.86);
 
     if (subtitle) {
       ctx.fillStyle = "rgba(255,255,255,0.72)";
-      ctx.font = `500 ${box.width * 0.052}px "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif`;
+      ctx.font = `500 ${box.unit * 0.052}px "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif`;
       ctx.fillText(subtitle, 0, bandTop + bandHeight * 0.95, box.width * 0.8);
     }
   }
@@ -406,20 +422,20 @@ function drawLabels(ctx: Canvas2dContext, scene: CardScene, box: CardBox): void 
   if (!badge) return;
 
   // バッジは左上に置く。文字幅に合わせてピルの幅を決める
-  ctx.font = `800 ${box.width * 0.058}px system-ui, sans-serif`;
+  ctx.font = `800 ${box.unit * 0.058}px system-ui, sans-serif`;
   const textWidth = ctx.measureText(badge).width;
-  const padding = box.width * 0.04;
+  const padding = box.unit * 0.04;
   const pillWidth = textWidth + padding * 2;
-  const pillHeight = box.width * 0.1;
-  const pillX = -box.width / 2 + box.width * 0.055;
-  const pillY = -box.height / 2 + box.width * 0.055;
+  const pillHeight = box.unit * 0.1;
+  const pillX = -box.width / 2 + box.unit * 0.055;
+  const pillY = -box.height / 2 + box.unit * 0.055;
 
   ctx.beginPath();
   ctx.roundRect(pillX, pillY, pillWidth, pillHeight, pillHeight / 2);
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.fill();
   ctx.strokeStyle = rarity.frameColors[0]!;
-  ctx.lineWidth = box.width * 0.007;
+  ctx.lineWidth = box.unit * 0.007;
   ctx.stroke();
 
   ctx.textAlign = "center";
@@ -619,7 +635,7 @@ function drawCard(
   roundedRectPath(ctx, box);
   ctx.clip();
 
-  const inset = box.width * 0.035;
+  const inset = box.unit * 0.035;
   drawArtwork(
     ctx,
     scene,
@@ -630,7 +646,16 @@ function drawCard(
   );
 
   // 四隅を落として中央のアートを浮かせる
-  const vignette = ctx.createRadialGradient(0, 0, box.width * 0.2, 0, 0, box.height * 0.72);
+  // 外周半径はカードの対角に合わせる。片方の辺だけを基準にすると、
+  // 横向きのときに左右の端だけが黒く沈んでしまう
+  const vignette = ctx.createRadialGradient(
+    0,
+    0,
+    box.unit * 0.2,
+    0,
+    0,
+    Math.hypot(box.width, box.height) * 0.6,
+  );
   vignette.addColorStop(0, "rgba(0,0,0,0)");
   vignette.addColorStop(1, "rgba(0,0,0,0.55)");
   ctx.fillStyle = vignette;
@@ -647,13 +672,13 @@ function drawCard(
   // 枠は 2 重。太い外枠の内側に細いラインを入れて、厚みを感じさせる
   const frameStyle = createFrameStyle(ctx, scene, box, time);
   ctx.strokeStyle = frameStyle;
-  ctx.lineWidth = box.width * 0.028;
-  roundedRectPath(ctx, box, box.width * 0.014);
+  ctx.lineWidth = box.unit * 0.028;
+  roundedRectPath(ctx, box, box.unit * 0.014);
   ctx.stroke();
 
   ctx.strokeStyle = "rgba(255,255,255,0.55)";
-  ctx.lineWidth = box.width * 0.005;
-  roundedRectPath(ctx, box, box.width * 0.045);
+  ctx.lineWidth = box.unit * 0.005;
+  roundedRectPath(ctx, box, box.unit * 0.045);
   ctx.stroke();
 
   ctx.restore();

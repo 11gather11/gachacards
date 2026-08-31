@@ -7,6 +7,7 @@
  */
 
 import type { RarityId } from "./card/rarity.ts";
+import type { Orientation } from "./types.ts";
 
 /** 保存対象の設定。アートワークは容量が大きいので含めない。 */
 export interface Settings {
@@ -21,6 +22,8 @@ export interface Settings {
   /** 尺（秒）。 */
   duration: number;
   fps: number;
+  /** カードの向き。 */
+  orientation: Orientation;
   /** {@link SIZE_PRESETS} の ID。 */
   sizeId: string;
   /** {@link QUALITY_PRESETS} の ID。 */
@@ -40,6 +43,8 @@ export const DEFAULT_SETTINGS: Settings = {
   subtitle: "",
   duration: 4,
   fps: 30,
+  // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする
+  orientation: "landscape",
   sizeId: "md",
   qualityId: "mid",
   loop: false,

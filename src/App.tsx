@@ -10,8 +10,8 @@ import type { CardScene } from "./card/render.ts";
 import { computeCardSize, computeTimeline } from "./card/render.ts";
 import { canExportTransparentWebm, exportWebm } from "./export/webm.ts";
 import { drawSeed, loadSettings, saveSettings } from "./settings.ts";
-import type { Artwork } from "./types.ts";
-import { QUALITY_PRESETS, SIZE_PRESETS } from "./types.ts";
+import type { Artwork, Orientation } from "./types.ts";
+import { QUALITY_PRESETS, SIZE_PRESETS, resolveFrameSize } from "./types.ts";
 
 /** プレビューの下に敷く背景。透過の確認用に切り替える。 */
 type PreviewBackground = "checker" | "dark" | "light" | "stream";
@@ -50,6 +50,7 @@ export function App() {
   const [subtitle, setSubtitle] = useState(INITIAL.subtitle);
   const [duration, setDuration] = useState(INITIAL.duration);
   const [fps, setFps] = useState<number>(INITIAL.fps);
+  const [orientation, setOrientation] = useState<Orientation>(INITIAL.orientation);
   const [sizeId, setSizeId] = useState(INITIAL.sizeId);
   const [qualityId, setQualityId] = useState(INITIAL.qualityId);
   const [loop, setLoop] = useState(INITIAL.loop);
@@ -75,12 +76,13 @@ export function App() {
       subtitle,
       duration,
       fps,
+      orientation,
       sizeId,
       qualityId,
       loop,
       seed,
     });
-  }, [rarityId, badge, title, subtitle, duration, fps, sizeId, qualityId, loop, seed]);
+  }, [rarityId, badge, title, subtitle, duration, fps, orientation, sizeId, qualityId, loop, seed]);
 
   // 書き出し結果の URL は差し替えのたびに解放する
   useEffect(() => {
@@ -90,14 +92,16 @@ export function App() {
     };
   }, [result]);
 
-  const size = SIZE_PRESETS.find((preset) => preset.id === sizeId) ?? SIZE_PRESETS[1]!;
+  const sizePreset = SIZE_PRESETS.find((preset) => preset.id === sizeId) ?? SIZE_PRESETS[1]!;
+  // 毎レンダリングで新しい物体になると scene の再計算が止まらないので、ここで固定する
+  const size = useMemo(() => resolveFrameSize(sizePreset, orientation), [sizePreset, orientation]);
   const quality = QUALITY_PRESETS.find((preset) => preset.id === qualityId) ?? QUALITY_PRESETS[1]!;
   const rarity = getRarity(rarityId);
   // null は「上書きしていない」の意味なので、レアリティ側の既定値に落とす
   const effectiveBadge = badge ?? rarity.badge;
 
   const scene = useMemo<CardScene>(() => {
-    const card = computeCardSize(size.height);
+    const card = computeCardSize(size.width, size.height);
     const timeline = computeTimeline(duration, loop);
     const particles = createParticles(
       rarity,
@@ -241,19 +245,36 @@ export function App() {
 
         <section className="field field--row">
           <label className="field__sub">
+            <span className="field__label">向き</span>
+            <select
+              className="input"
+              value={orientation}
+              onChange={(event) => setOrientation(event.target.value as Orientation)}
+            >
+              <option value="landscape">横長</option>
+              <option value="portrait">縦長</option>
+            </select>
+          </label>
+          <label className="field__sub">
             <span className="field__label">サイズ</span>
             <select
               className="input"
               value={sizeId}
               onChange={(event) => setSizeId(event.target.value)}
             >
-              {SIZE_PRESETS.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.label}
-                </option>
-              ))}
+              {SIZE_PRESETS.map((preset) => {
+                const frame = resolveFrameSize(preset, orientation);
+                return (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label} ({frame.width}×{frame.height})
+                  </option>
+                );
+              })}
             </select>
           </label>
+        </section>
+
+        <section className="field field--row">
           <label className="field__sub">
             <span className="field__label">fps</span>
             <select
@@ -268,9 +289,6 @@ export function App() {
               ))}
             </select>
           </label>
-        </section>
-
-        <section className="field field--row">
           <label className="field__sub">
             <span className="field__label">画質</span>
             <select
@@ -285,6 +303,9 @@ export function App() {
               ))}
             </select>
           </label>
+        </section>
+
+        <section className="field field--row">
           <label className="field__sub">
             <span className="field__label">パーティクルの種</span>
             <div className="input-row">

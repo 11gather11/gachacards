@@ -92,6 +92,10 @@ export function createParticles(
   const { cardWidth: w, cardHeight: h, duration, startAt } = field;
   // 粒が消えきる前に動画が終わらないよう、生成のリミットを尺から逆算する
   const spawnWindow = Math.max(0.1, duration - startAt);
+  // 粒の大きさは短辺、飛ぶ速さはカード全体の大きさに合わせる。
+  // どちらも幅だけを基準にすると、横向きのカードで粒が肥大化して飛び方も変わる
+  const unit = Math.min(w, h);
+  const span = (w + h) / 2;
   const particles: Particle[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -111,11 +115,11 @@ export function createParticles(
         x0: randomBetween(rng, -w * 0.58, w * 0.58),
         y0: randomBetween(rng, h * 0.4, h * 0.62),
         vx: randomBetween(rng, -8, 8),
-        vy: randomBetween(rng, -h * 0.42, -h * 0.18),
+        vy: randomBetween(rng, -span * 0.42, -span * 0.18),
         gravity: randomBetween(rng, -6, 6),
-        size: randomBetween(rng, w * 0.006, w * 0.018),
+        size: randomBetween(rng, unit * 0.006, unit * 0.018),
         shape: rng() < 0.25 ? "star" : "circle",
-        swayAmplitude: randomBetween(rng, w * 0.01, w * 0.05),
+        swayAmplitude: randomBetween(rng, unit * 0.01, unit * 0.05),
         swayFrequency: randomBetween(rng, 1.2, 3.4),
       });
       continue;
@@ -124,7 +128,7 @@ export function createParticles(
     if (kind === "spark") {
       // カード面のどこかから四方へ飛ばす。半分は登場直後に集中させて「弾けた」感を出す
       const angle = randomBetween(rng, 0, Math.PI * 2);
-      const speed = randomBetween(rng, h * 0.18, h * 0.55);
+      const speed = randomBetween(rng, span * 0.18, span * 0.55);
       const early = i < count * 0.5;
       particles.push({
         ...shared,
@@ -134,8 +138,8 @@ export function createParticles(
         y0: randomBetween(rng, -h * 0.35, h * 0.35),
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        gravity: randomBetween(rng, h * 0.25, h * 0.6),
-        size: randomBetween(rng, w * 0.005, w * 0.016),
+        gravity: randomBetween(rng, span * 0.25, span * 0.6),
+        size: randomBetween(rng, unit * 0.005, unit * 0.016),
         shape: rng() < 0.4 ? "shard" : "circle",
         swayAmplitude: 0,
         swayFrequency: 0,
@@ -147,17 +151,17 @@ export function createParticles(
     const isBlast = i < count * 0.7;
     const angle = randomBetween(rng, 0, Math.PI * 2);
     if (isBlast) {
-      const speed = randomBetween(rng, h * 0.4, h * 1.1);
+      const speed = randomBetween(rng, span * 0.4, span * 1.1);
       particles.push({
         ...shared,
         birth: startAt + randomBetween(rng, 0, 0.12),
         life: randomBetween(rng, 0.6, 1.4),
-        x0: Math.cos(angle) * w * 0.1,
-        y0: Math.sin(angle) * w * 0.1,
+        x0: Math.cos(angle) * unit * 0.1,
+        y0: Math.sin(angle) * unit * 0.1,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        gravity: randomBetween(rng, h * 0.1, h * 0.4),
-        size: randomBetween(rng, w * 0.006, w * 0.02),
+        gravity: randomBetween(rng, span * 0.1, span * 0.4),
+        size: randomBetween(rng, unit * 0.006, unit * 0.02),
         shape: rng() < 0.5 ? "star" : "shard",
         swayAmplitude: 0,
         swayFrequency: 0,
@@ -170,11 +174,11 @@ export function createParticles(
         x0: randomBetween(rng, -w * 0.6, w * 0.6),
         y0: randomBetween(rng, h * 0.3, h * 0.6),
         vx: randomBetween(rng, -10, 10),
-        vy: randomBetween(rng, -h * 0.36, -h * 0.14),
+        vy: randomBetween(rng, -span * 0.36, -span * 0.14),
         gravity: -4,
-        size: randomBetween(rng, w * 0.006, w * 0.016),
+        size: randomBetween(rng, unit * 0.006, unit * 0.016),
         shape: "circle",
-        swayAmplitude: randomBetween(rng, w * 0.015, w * 0.06),
+        swayAmplitude: randomBetween(rng, unit * 0.015, unit * 0.06),
         swayFrequency: randomBetween(rng, 1, 3),
       });
     }
