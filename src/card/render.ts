@@ -85,8 +85,9 @@ export function computeTimeline(duration: number, loop: boolean): Timeline {
  * @param frameHeight - 出力フレームの高さ（px）
  */
 export function computeCardSize(frameHeight: number): { width: number; height: number } {
-  // グローとパーティクルがはみ出す余白を確保しつつ、カードは 2:3 に固定する
-  const height = frameHeight * 0.74;
+  // カードは 2:3 に固定。金や虹のグローはカード幅の 3 割ほど外に伸びるので、
+  // それを飲み込めるだけの余白がフレーム側に残る大きさにしている
+  const height = frameHeight * 0.64;
   return { width: height * (2 / 3), height };
 }
 
@@ -187,6 +188,35 @@ function computeShake(scene: CardScene, timeline: Timeline, time: number): [numb
     (Math.sin(time * 47.3) + Math.sin(time * 91.7) * 0.5) * magnitude,
     (Math.cos(time * 53.1) + Math.cos(time * 83.9) * 0.5) * magnitude,
   ];
+}
+
+/**
+ * グローのぼかし半径を求める。
+ *
+ * 素の値はカード幅とレアリティの強さから決まるが、それをそのまま使うと
+ * 金や虹ではフレームの余白より広くなり、光が端で切られて透過素材に
+ * 四角い縁が出る。カードとフレームの隙間に収まるところまで必ず切り詰める。
+ *
+ * @param scene - 描画中のシーン
+ * @param box - カードの矩形
+ * @param scale - 現在のカードの拡大率
+ * @param strength - レアリティ由来のグローの強さ
+ * @returns ローカル座標系でのぼかし半径（px）
+ */
+function computeGlowBlur(scene: CardScene, box: CardBox, scale: number, strength: number): number {
+  if (strength <= 0) return 0;
+
+  // グローは拡大後の座標で滲むので、余白も拡大後のカードの大きさで測る
+  const margin = Math.min(
+    (scene.width - box.width * scale) / 2,
+    (scene.height - box.height * scale) / 2,
+  );
+  if (margin <= 0) return 0;
+
+  // 余白いっぱいまで使うと端で完全に 0 になりきらないので、少し内側で止める。
+  // 得られた上限は拡大後の値なので、ローカル座標に戻してから使う
+  const maxBlur = (margin * 0.85) / scale;
+  return Math.min(box.width * 0.28 * strength, maxBlur);
 }
 
 /** 枠に使うグラデーションを作る。虹だけは時間で回るコニックグラデーションにする。 */
@@ -371,7 +401,7 @@ function drawShockwave(
 
   // フレームの外まで広げると、切れた円弧が四角い縁として残ってしまう。
   // 短辺の半分を上限にして、消えるまでをフレーム内に収める
-  const maxRadius = Math.min(scene.width, scene.height) * 0.5;
+  const maxRadius = Math.min(scene.width, scene.height) * 0.45;
   const radius = maxRadius * (0.25 + 0.75 * easeOutCubic(t));
   ctx.save();
   ctx.globalAlpha = (1 - t) * strength * 0.8;
@@ -484,10 +514,11 @@ export function renderFrame(ctx: Canvas2dContext, time: number, scene: CardScene
   // グローはカード本体の下に敷く。着地の瞬間だけ一段強くする
   const glowPulse = 0.85 + 0.15 * Math.sin(time * 2.4);
   const glowStrength = scene.rarity.glowStrength * glowPulse + transform.impact * 0.4;
-  if (glowStrength > 0) {
+  const glowBlur = computeGlowBlur(scene, box, transform.scale, glowStrength);
+  if (glowBlur > 0) {
     ctx.save();
     ctx.shadowColor = scene.rarity.glowColor;
-    ctx.shadowBlur = box.width * 0.28 * glowStrength;
+    ctx.shadowBlur = glowBlur;
     ctx.fillStyle = "rgba(0,0,0,0.9)";
     roundedRectPath(ctx, box);
     ctx.fill();
