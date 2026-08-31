@@ -51,7 +51,8 @@ export const DEFAULT_SETTINGS: Settings = {
   duration: 8,
   fps: 30,
   introMode: "on",
-  introSeconds: 4,
+  // 長く溜めるとテンポが落ちるので、既定は短めに置く
+  introSeconds: 2,
   // 既定は途中の色をすべて通る（1 段ずつ上がる）
   via: ["blue", "green", "red", "gold"],
   // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする
