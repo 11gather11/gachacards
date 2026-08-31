@@ -383,12 +383,18 @@ export function drawIntro(
     ctx.stroke()
   }
 
-  // 中心の十字フレア。レンズフレアのように長く伸ばして光の強さを誇張する
+  // 中心の十字フレア。レンズフレアのように長く伸ばして光の強さを誇張する。
+  // 溜めの途中で grow が 1 に飽和するため、ここを時間で揺らさないと、
+  // 回り続ける放射光の中で十字だけが止まって見える
+  const flarePulse = 1 + 0.16 * Math.sin(time * 7.5)
   const flareLength = Math.min(
     maxRadius,
-    maxRadius * (0.5 + 0.5 * easeOutCubic(grow)) * (1 + 0.5 * burst),
+    maxRadius * (0.5 + 0.5 * easeOutCubic(grow)) * (1 + 0.5 * burst) * flarePulse,
   )
-  ctx.globalAlpha = 0.55 * grow * (1 - burst * 0.3)
+  ctx.save()
+  // 放射光とは逆向きに、それよりずっと遅く回す。速く回すと十字に見えなくなる
+  ctx.rotate(-time * 0.25)
+  ctx.globalAlpha = 0.55 * grow * (1 - burst * 0.3) * (0.8 + 0.2 * Math.sin(time * 5.5))
   for (const angle of [0, Math.PI / 2]) {
     const fx = Math.cos(angle) * flareLength
     const fy = Math.sin(angle) * flareLength
@@ -403,6 +409,7 @@ export function drawIntro(
     ctx.lineTo(fx, fy)
     ctx.stroke()
   }
+  ctx.restore()
 
   // 弾けた瞬間、溜めた粒が一気に外へ散る
   if (burst > 0) {
