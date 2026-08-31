@@ -106,7 +106,7 @@ export const RARITY_PRESETS: readonly RarityPreset[] = [
     glowColor: "#3ddc7f",
     glowStrength: 0.6,
     shineCount: 3,
-    shake: 0.002,
+    shake: 0.005,
     flash: 0.35,
     rainbowFrame: false,
     particle: { kind: "dust", count: 76, colors: ["#8cf3ac", "#e9fff1", "#3ddc7f"] },

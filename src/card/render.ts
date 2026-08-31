@@ -477,8 +477,10 @@ function drawShockwave(
   ctx.globalAlpha *= (1 - t) * strength * 0.8;
   ctx.strokeStyle = scene.rarity.glowColor;
 
-  // 波を 3 本、少しずつ遅らせて出す。1 本だけだと着地の衝撃が軽い
-  for (let i = 0; i < 3; i++) {
+  // 上位は 3 本を少しずつ遅らせて重ねる。緑のような下位は 1 本だけにして、
+  // 着地の重さでも段の差が分かるようにする
+  const waveCount = strength >= 0.6 ? 3 : 1;
+  for (let i = 0; i < waveCount; i++) {
     const delayed = progress(t, i * 0.16, 1);
     if (delayed <= 0) continue;
     ctx.globalAlpha *= i === 0 ? 1 : 0.62;
@@ -507,8 +509,10 @@ function drawImpactBurst(
   timeline: Timeline,
   time: number,
 ): void {
+  // 集中線は赤（SSR）以上だけの特権にする。下位まで出すと段の差が消えて、
+  // 「集中線が走った＝上位」という手がかりにならない
   const strength = scene.rarity.flash;
-  if (strength < 0.2) return;
+  if (strength < 0.5) return;
 
   const t = progress(time, timeline.entranceEnd - 0.04, timeline.entranceEnd + 0.34);
   if (t <= 0 || t >= 1) return;
