@@ -160,12 +160,17 @@ function computeCardBox(scene: CardScene): CardBox {
   return { width, height, radius: unit * 0.055, unit }
 }
 
-/** 角丸矩形のパスを、中心原点で引く。 */
+/**
+ * 角丸矩形のパスを、中心原点で引く。
+ *
+ * 内側に寄せた分だけ半径も同じだけ小さくする。ここを縮めきらないと角の曲率が
+ * 外周と揃わず、内側の線だけが丸く膨らんで見える。
+ */
 function roundedRectPath(ctx: Canvas2dContext, box: CardBox, inset = 0): void {
   const w = box.width - inset * 2
   const h = box.height - inset * 2
   ctx.beginPath()
-  ctx.roundRect(-w / 2, -h / 2, w, h, Math.max(0, box.radius - inset * 0.6))
+  ctx.roundRect(-w / 2, -h / 2, w, h, Math.max(0, box.radius - inset))
 }
 
 /** 登場・退場・浮遊をまとめた、その時刻のカードの姿勢。 */
