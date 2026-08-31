@@ -385,16 +385,16 @@ body {
   flex-wrap: wrap;
 }
 
-.seed {
+.input-row {
   display: flex;
   gap: 6px;
 }
 
-.seed .input {
+.input-row .input {
   min-width: 0;
 }
 
-.seed .button {
+.input-row .button {
   flex: none;
   padding: 10px 12px;
 }

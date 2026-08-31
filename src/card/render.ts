@@ -35,6 +35,8 @@ export interface CardScene {
   /** アートワークの元高さ（px）。 */
   imageHeight: number;
   rarity: RarityPreset;
+  /** カード左上のランク表記。空文字ならバッジごと描かない。 */
+  badge: string;
   /** カード下部に出す名前。空文字なら帯ごと描かない。 */
   title: string;
   /** 名前の下に出す小さい文字。 */
@@ -89,6 +91,43 @@ export function computeCardSize(frameHeight: number): { width: number; height: n
   // それを飲み込めるだけの余白がフレーム側に残る大きさにしている
   const height = frameHeight * 0.64;
   return { width: height * (2 / 3), height };
+}
+
+/** フェード合成に使う中間レイヤー。 */
+interface Layer {
+  canvas: OffscreenCanvas;
+  ctx: OffscreenCanvasRenderingContext2D;
+}
+
+/**
+ * 描画先ごとに 1 枚だけ中間レイヤーを持つ。
+ * プレビューと書き出しは別のコンテキストなので、同時に走っても互いのレイヤーを壊さない。
+ */
+const layerCache = new WeakMap<Canvas2dContext, Layer>();
+
+/**
+ * フェード合成用のレイヤーを用意する。中身はクリア済みで返る。
+ *
+ * @param target - 最終的な描画先のコンテキスト
+ * @param width - レイヤーの幅（px）
+ * @param height - レイヤーの高さ（px）
+ * @returns 使えるレイヤー。OffscreenCanvas が使えない環境では `null`
+ */
+function acquireLayer(target: Canvas2dContext, width: number, height: number): Layer | null {
+  if (typeof OffscreenCanvas === "undefined") return null;
+
+  let layer = layerCache.get(target);
+  // サイズが変わったら作り直す。それ以外は使い回してフレームごとの確保を避ける
+  if (!layer || layer.canvas.width !== width || layer.canvas.height !== height) {
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return null;
+    layer = { canvas, ctx };
+    layerCache.set(target, layer);
+  }
+
+  layer.ctx.clearRect(0, 0, width, height);
+  return layer;
 }
 
 /** 出力サイズからカードの矩形を決める。 */
@@ -329,7 +368,8 @@ function drawHologram(ctx: Canvas2dContext, box: CardBox, time: number): void {
   });
   ctx.save();
   ctx.globalCompositeOperation = "overlay";
-  ctx.globalAlpha = 0.28;
+  // 代入するとカードのフェードインが無視され、登場前から模様だけが出てしまう
+  ctx.globalAlpha *= 0.28;
   ctx.fillStyle = gradient;
   ctx.fillRect(-box.width / 2, -box.height / 2, box.width, box.height);
   ctx.restore();
@@ -337,7 +377,7 @@ function drawHologram(ctx: Canvas2dContext, box: CardBox, time: number): void {
 
 /** カード下部の名前帯と、左上のレアリティバッジ。 */
 function drawLabels(ctx: Canvas2dContext, scene: CardScene, box: CardBox): void {
-  const { title, subtitle, rarity } = scene;
+  const { title, subtitle, rarity, badge } = scene;
 
   if (title) {
     const bandHeight = box.height * 0.16;
@@ -363,9 +403,11 @@ function drawLabels(ctx: Canvas2dContext, scene: CardScene, box: CardBox): void 
     }
   }
 
+  if (!badge) return;
+
   // バッジは左上に置く。文字幅に合わせてピルの幅を決める
   ctx.font = `800 ${box.width * 0.058}px system-ui, sans-serif`;
-  const textWidth = ctx.measureText(rarity.badge).width;
+  const textWidth = ctx.measureText(badge).width;
   const padding = box.width * 0.04;
   const pillWidth = textWidth + padding * 2;
   const pillHeight = box.width * 0.1;
@@ -383,7 +425,7 @@ function drawLabels(ctx: Canvas2dContext, scene: CardScene, box: CardBox): void 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = rarity.frameColors[0]!;
-  ctx.fillText(rarity.badge, pillX + pillWidth / 2, pillY + pillHeight / 2);
+  ctx.fillText(badge, pillX + pillWidth / 2, pillY + pillHeight / 2);
 }
 
 /** 着地の瞬間に広がる衝撃波のリング。 */
@@ -404,7 +446,8 @@ function drawShockwave(
   const maxRadius = Math.min(scene.width, scene.height) * 0.45;
   const radius = maxRadius * (0.25 + 0.75 * easeOutCubic(t));
   ctx.save();
-  ctx.globalAlpha = (1 - t) * strength * 0.8;
+  // カード側のフェードに乗せる。代入するとフェードを打ち消してしまう
+  ctx.globalAlpha *= (1 - t) * strength * 0.8;
   ctx.strokeStyle = scene.rarity.glowColor;
   ctx.lineWidth = scene.width * 0.012 * (1 - t);
   ctx.beginPath();
@@ -440,7 +483,8 @@ function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): vo
     if (!state || state.alpha <= 0) continue;
 
     ctx.save();
-    ctx.globalAlpha = clamp(state.alpha, 0, 1);
+    // カード側のフェードに乗せる。代入すると退場後も粒だけが残る
+    ctx.globalAlpha *= clamp(state.alpha, 0, 1);
     ctx.globalCompositeOperation = "lighter";
     ctx.translate(state.x, state.y);
     ctx.rotate(state.rotation);
@@ -496,15 +540,58 @@ function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): vo
  * renderFrame(ctx, 1.2, scene);
  */
 export function renderFrame(ctx: Canvas2dContext, time: number, scene: CardScene): void {
-  const box = computeCardBox(scene);
   const timeline = computeTimeline(scene.duration, scene.loop);
   const transform = computeTransform(scene, timeline, time);
+  if (transform.alpha <= 0) return;
+
+  if (transform.alpha >= 0.999) {
+    drawCard(ctx, time, scene, timeline, transform);
+    return;
+  }
+
+  // フェード中は、一度レイヤーに不透明で描いてから 1 回だけ合成する。
+  // カードはグロー・アート・ビネット・枠・ラベルと層を重ねて描いているため、
+  // 各層に globalAlpha を掛けると 1-(1-a)^層数 で不透明に戻ってしまい、
+  // フェードがほとんど効かなくなる
+  const layer = acquireLayer(ctx, scene.width, scene.height);
+  if (!layer) {
+    // レイヤーを用意できない環境では、精度を落としてでも描画を続ける
+    ctx.save();
+    ctx.globalAlpha = transform.alpha;
+    drawCard(ctx, time, scene, timeline, transform);
+    ctx.restore();
+    return;
+  }
+
+  drawCard(layer.ctx, time, scene, timeline, transform);
+  ctx.save();
+  ctx.globalAlpha = transform.alpha;
+  ctx.drawImage(layer.canvas, 0, 0);
+  ctx.restore();
+}
+
+/**
+ * カード一式を不透明で描く。全体のフェードは呼び出し側が担当する。
+ *
+ * @param ctx - 描画先。フェード中はレイヤーのコンテキストが渡る
+ * @param time - アニメーション先頭からの経過秒
+ * @param scene - 描画するシーン
+ * @param timeline - 演出の区切り時刻
+ * @param transform - その時刻のカードの姿勢
+ */
+function drawCard(
+  ctx: Canvas2dContext,
+  time: number,
+  scene: CardScene,
+  timeline: Timeline,
+  transform: CardTransform,
+): void {
+  const box = computeCardBox(scene);
   const [shakeX, shakeY] = computeShake(scene, timeline, time);
 
   ctx.save();
   // 以降はすべてカード中心を原点とした座標で描く
   ctx.translate(scene.width / 2 + shakeX, scene.height / 2 + transform.offsetY + shakeY);
-  ctx.globalAlpha = transform.alpha;
 
   drawShockwave(ctx, scene, timeline, time);
 

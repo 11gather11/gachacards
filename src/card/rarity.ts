@@ -33,7 +33,7 @@ export interface RarityPreset {
   id: RarityId;
   /** UI に出す表示名 */
   label: string;
-  /** カード上に焼き込むランク表記 */
+  /** カード上に焼き込むランク表記の既定値。UI から上書きできる。 */
   badge: string;
   /** 枠のグラデーションに使う色（外→内の順）。 */
   frameColors: readonly string[];
@@ -145,7 +145,7 @@ export const RARITY_PRESETS: readonly RarityPreset[] = [
   {
     id: "rainbow",
     label: "虹",
-    badge: "PREMIUM",
+    badge: "LR",
     frameColors: ["#ff5f6d", "#ffc371", "#4be7a0", "#4aa8ff", "#b06bff", "#ff5f6d"],
     backdropColors: ["#2b1245", "#0a0616"],
     glowColor: "#ffffff",

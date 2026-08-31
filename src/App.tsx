@@ -45,6 +45,7 @@ function downloadBlob(blob: Blob, fileName: string): void {
 export function App() {
   const [artwork, setArtwork] = useState<Artwork | null>(null);
   const [rarityId, setRarityId] = useState<RarityId>(INITIAL.rarityId);
+  const [badge, setBadge] = useState<string | null>(INITIAL.badge);
   const [title, setTitle] = useState(INITIAL.title);
   const [subtitle, setSubtitle] = useState(INITIAL.subtitle);
   const [duration, setDuration] = useState(INITIAL.duration);
@@ -67,8 +68,19 @@ export function App() {
 
   // 別の日に同じカードを作り直せるよう、seed を含めた設定を残しておく
   useEffect(() => {
-    saveSettings({ rarityId, title, subtitle, duration, fps, sizeId, qualityId, loop, seed });
-  }, [rarityId, title, subtitle, duration, fps, sizeId, qualityId, loop, seed]);
+    saveSettings({
+      rarityId,
+      badge,
+      title,
+      subtitle,
+      duration,
+      fps,
+      sizeId,
+      qualityId,
+      loop,
+      seed,
+    });
+  }, [rarityId, badge, title, subtitle, duration, fps, sizeId, qualityId, loop, seed]);
 
   // 書き出し結果の URL は差し替えのたびに解放する
   useEffect(() => {
@@ -81,6 +93,8 @@ export function App() {
   const size = SIZE_PRESETS.find((preset) => preset.id === sizeId) ?? SIZE_PRESETS[1]!;
   const quality = QUALITY_PRESETS.find((preset) => preset.id === qualityId) ?? QUALITY_PRESETS[1]!;
   const rarity = getRarity(rarityId);
+  // null は「上書きしていない」の意味なので、レアリティ側の既定値に落とす
+  const effectiveBadge = badge ?? rarity.badge;
 
   const scene = useMemo<CardScene>(() => {
     const card = computeCardSize(size.height);
@@ -104,13 +118,14 @@ export function App() {
       imageWidth: artwork?.width ?? 0,
       imageHeight: artwork?.height ?? 0,
       rarity,
+      badge: effectiveBadge,
       title,
       subtitle,
       duration,
       particles,
       loop,
     };
-  }, [size, rarity, artwork, title, subtitle, duration, loop, seed]);
+  }, [size, rarity, effectiveBadge, artwork, title, subtitle, duration, loop, seed]);
 
   const handleExport = async () => {
     setError(null);
@@ -161,6 +176,31 @@ export function App() {
         <section className="field">
           <span className="field__label">レアリティ（保留カラー）</span>
           <RarityPicker value={rarityId} onChange={setRarityId} />
+        </section>
+
+        <section className="field">
+          <label className="field__label" htmlFor="badge">
+            ランク表記（空ならバッジを出さない）
+          </label>
+          <div className="input-row">
+            <input
+              id="badge"
+              type="text"
+              className="input"
+              value={effectiveBadge}
+              maxLength={12}
+              onChange={(event) => setBadge(event.target.value)}
+            />
+            <button
+              type="button"
+              className="button"
+              title="レアリティごとの既定値に戻す"
+              disabled={badge === null}
+              onClick={() => setBadge(null)}
+            >
+              ↺
+            </button>
+          </div>
         </section>
 
         <section className="field">
@@ -247,7 +287,7 @@ export function App() {
           </label>
           <label className="field__sub">
             <span className="field__label">パーティクルの種</span>
-            <div className="seed">
+            <div className="input-row">
               <input
                 type="number"
                 className="input"

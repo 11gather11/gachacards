@@ -11,6 +11,11 @@ import type { RarityId } from "./card/rarity.ts";
 /** 保存対象の設定。アートワークは容量が大きいので含めない。 */
 export interface Settings {
   rarityId: RarityId;
+  /**
+   * カード左上のランク表記の上書き。
+   * `null` ならレアリティごとの既定値、空文字ならバッジを出さない。
+   */
+  badge: string | null;
   title: string;
   subtitle: string;
   /** 尺（秒）。 */
@@ -30,6 +35,7 @@ const STORAGE_KEY = "card-alert-maker:settings";
 /** 何も保存されていないときに使う初期設定。 */
 export const DEFAULT_SETTINGS: Settings = {
   rarityId: "gold",
+  badge: null,
   title: "",
   subtitle: "",
   duration: 4,
