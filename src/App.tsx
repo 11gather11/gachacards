@@ -144,7 +144,7 @@ export function App() {
         ? null
         : {
             stages: introStages,
-            particles: createIntroParticles(64, seed),
+            particles: createIntroParticles(130, seed),
           };
     const particles = createParticles(
       rarity,

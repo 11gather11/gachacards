@@ -372,7 +372,7 @@ function drawShine(
     const bandWidth = box.width * 0.42;
     const gradient = ctx.createLinearGradient(x - bandWidth, 0, x + bandWidth, 0);
     gradient.addColorStop(0, "rgba(255,255,255,0)");
-    gradient.addColorStop(0.5, `rgba(255,255,255,${0.42 * pulse(t)})`);
+    gradient.addColorStop(0.5, `rgba(255,255,255,${0.58 * pulse(t)})`);
     gradient.addColorStop(1, "rgba(255,255,255,0)");
 
     ctx.save();
@@ -394,7 +394,7 @@ function drawHologram(ctx: Canvas2dContext, box: CardBox, time: number): void {
   ctx.save();
   ctx.globalCompositeOperation = "overlay";
   // 代入するとカードのフェードインが無視され、登場前から模様だけが出てしまう
-  ctx.globalAlpha *= 0.28;
+  ctx.globalAlpha *= 0.4;
   ctx.fillStyle = gradient;
   ctx.fillRect(-box.width / 2, -box.height / 2, box.width, box.height);
   ctx.restore();

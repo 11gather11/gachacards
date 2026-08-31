@@ -303,13 +303,16 @@ export function drawIntro(
   // 光の重なりを素直に足し合わせる
   ctx.globalCompositeOperation = "lighter";
 
-  // 回転する放射光。溜めが進むほど長く伸びる
-  const rayCount = 12;
-  const rayLength = maxRadius * (0.25 + 0.75 * easeOutCubic(grow));
+  // 回転する放射光。溜めが進むほど長く伸び、弾ける瞬間に一気に開く
+  const rayCount = 18;
+  const rayLength = Math.min(
+    maxRadius,
+    maxRadius * (0.25 + 0.75 * easeOutCubic(grow)) * (1 + 0.35 * easeOutCubic(burst)),
+  );
   ctx.save();
   // 角速度は秒あたりで決める。正規化時刻で回すと長い演出ほど回転が鈍くなる
   ctx.rotate(time * 1.6);
-  ctx.globalAlpha = 0.32 * grow * (1 - burst);
+  ctx.globalAlpha = 0.45 * grow * (1 - burst * 0.4);
   for (let i = 0; i < rayCount; i++) {
     const angle = (i / rayCount) * Math.PI * 2;
     const ray = ctx.createLinearGradient(
@@ -318,10 +321,11 @@ export function drawIntro(
       Math.cos(angle) * rayLength,
       Math.sin(angle) * rayLength,
     );
-    ray.addColorStop(0, accent);
+    ray.addColorStop(0, "#ffffff");
+    ray.addColorStop(0.3, accent);
     ray.addColorStop(1, "rgba(0,0,0,0)");
     ctx.strokeStyle = ray;
-    ctx.lineWidth = unit * 0.012;
+    ctx.lineWidth = unit * 0.016;
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(Math.cos(angle) * rayLength, Math.sin(angle) * rayLength);
@@ -331,14 +335,15 @@ export function drawIntro(
 
   // 外から中心へ繰り返し縮んでいくリング。
   // 収束の周期も秒で決める。演出が長いレアリティでも吸い込む速さは変わらない
-  for (let i = 0; i < 3; i++) {
-    const t = (time * 1.35 + i / 3) % 1;
+  const ringCount = 5;
+  for (let i = 0; i < ringCount; i++) {
+    const t = (time * 1.35 + i / ringCount) % 1;
     drawSoftRing(
       ctx,
       maxRadius * (1 - easeOutCubic(t)),
-      unit * 0.022 * (1 - t * 0.5),
+      unit * 0.028 * (1 - t * 0.5),
       color,
-      pulse(t) * 0.45 * grow * (1 - burst),
+      pulse(t) * 0.55 * grow * (1 - burst),
     );
   }
 
@@ -356,14 +361,26 @@ export function drawIntro(
     const size = particle.size * unit * (1 - q * 0.6);
 
     ctx.globalAlpha = Math.min(1, q * 4) * (1 - q) * (1 - burst);
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, size * 2.5);
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, size * 3.2);
     glow.addColorStop(0, "#ffffff");
-    glow.addColorStop(0.4, color);
+    glow.addColorStop(0.35, color);
     glow.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(x, y, size * 2.5, 0, Math.PI * 2);
+    ctx.arc(x, y, size * 3.2, 0, Math.PI * 2);
     ctx.fill();
+
+    // 中心へ向かう尾を引かせて、吸い込まれている流れを見せる
+    const tail = ctx.createLinearGradient(x, y, x * 0.72, y * 0.72);
+    tail.addColorStop(0, color);
+    tail.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.globalAlpha *= 0.5;
+    ctx.strokeStyle = tail;
+    ctx.lineWidth = size * 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x * 0.72, y * 0.72);
+    ctx.stroke();
   }
 
   // 中心の光球。溜めるほど大きく、昇格の瞬間に一段膨らむ
@@ -388,13 +405,27 @@ export function drawIntro(
   // 昇格した瞬間に走るリング。色が変わったことを見逃さないための合図。
   // 太くはっきり描くと光ではなく輪郭線に見えてしまうので、細く、素早く消す
   if (promotion > 0.01) {
+    // 走るリングに加えて、中心から一瞬だけ閃光を広げる。
+    // 色が変わったことを、目を離していても気づける強さにする
+    const spread = easeOutCubic(1 - promotion);
     drawSoftRing(
       ctx,
-      maxRadius * (0.15 + 0.5 * easeOutCubic(1 - promotion)),
-      unit * 0.02 * promotion,
+      maxRadius * (0.15 + 0.6 * spread),
+      unit * 0.03 * promotion,
       "#ffffff",
-      promotion * promotion * 0.7,
+      promotion * promotion * 0.85,
     );
+
+    const flashRadius = maxRadius * (0.25 + 0.75 * spread);
+    const flash = ctx.createRadialGradient(0, 0, 0, 0, 0, flashRadius);
+    flash.addColorStop(0, "#ffffff");
+    flash.addColorStop(0.4, color);
+    flash.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.globalAlpha = promotion * promotion * 0.55;
+    ctx.fillStyle = flash;
+    ctx.beginPath();
+    ctx.arc(0, 0, flashRadius, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   ctx.restore();
