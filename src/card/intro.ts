@@ -385,16 +385,17 @@ export function drawIntro(
 
   // 中心の十字フレア。レンズフレアのように長く伸ばして光の強さを誇張する。
   // 溜めの途中で grow が 1 に飽和するため、ここを時間で揺らさないと、
-  // 回り続ける放射光の中で十字だけが止まって見える
-  const flarePulse = 1 + 0.16 * Math.sin(time * 7.5)
+  // 回り続ける放射光の中で十字だけが止まって見える。
+  // 回すと十字の形が崩れるので、向きは固定したまま大きさで動かす
+  // 長さと明るさを同じ位相で振る。ずらすと伸びと光が噛み合わず、
+  // 息をしているようには見えない
+  const flareBeat = Math.sin(time * 7)
   const flareLength = Math.min(
     maxRadius,
-    maxRadius * (0.5 + 0.5 * easeOutCubic(grow)) * (1 + 0.5 * burst) * flarePulse,
+    maxRadius * (0.5 + 0.5 * easeOutCubic(grow)) * (1 + 0.5 * burst) * (1 + 0.34 * flareBeat),
   )
   ctx.save()
-  // 放射光とは逆向きに、それよりずっと遅く回す。速く回すと十字に見えなくなる
-  ctx.rotate(-time * 0.25)
-  ctx.globalAlpha = 0.55 * grow * (1 - burst * 0.3) * (0.8 + 0.2 * Math.sin(time * 5.5))
+  ctx.globalAlpha = 0.55 * grow * (1 - burst * 0.3) * (0.8 + 0.2 * flareBeat)
   for (const angle of [0, Math.PI / 2]) {
     const fx = Math.cos(angle) * flareLength
     const fy = Math.sin(angle) * flareLength
