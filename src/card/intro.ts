@@ -17,6 +17,15 @@ import type { Canvas2dContext } from "./render.ts";
 /** UI から選ぶ入り演出の設定。`"off"` なら演出そのものを出さない。 */
 export type IntroMode = "off" | "on";
 
+/** 白から目的の色まで、どう刻んで上がるか。 */
+export type PromotionStep =
+  /** 保留カラーを 1 段ずつすべて通る */
+  | "all"
+  /** 途中の色をひとつだけ挟んで飛ばす */
+  | "skip"
+  /** 白から目的の色へ一撃で飛ぶ */
+  | "jump";
+
 /** 光の色が切り替わる 1 段階。 */
 export interface IntroStage {
   /** 入り演出を 0-1 に正規化した時刻。この時刻からこの色になる。 */
@@ -92,30 +101,41 @@ export function computeIntroDuration(duration: number, enabled: boolean): number
 /**
  * 色の段取りを組み立てる。
  *
- * 光は必ず白から始まり、保留カラーを 1 段ずつ上がって本来の色に着地する。
- * 段数はレアリティだけで決まるので、同じレアリティなら毎回同じ段取りになる。
+ * 光は必ず白から始まり、目的の色に着地する。途中をどう刻むかは `step` で決まる。
+ * 乱数を使わないので、同じ組み合わせなら毎回同じ段取りになる。
  *
  * @param target - 最終的に落ち着くレアリティ
+ * @param step - 白から目的の色までの刻み方
  * @returns `at` の昇順に並んだ段階の配列。先頭は必ず白（`at` は 0）
  *
  * @example
- * // 金なら 白 → 青 → 緑 → 赤 → 金 と 4 段上がる
- * buildIntroStages(getRarity("gold"));
+ * buildIntroStages(getRarity("rainbow"), "all");  // 白 → 青 → 緑 → 赤 → 金 → 虹
+ * buildIntroStages(getRarity("rainbow"), "skip"); // 白 → 緑 → 虹
+ * buildIntroStages(getRarity("rainbow"), "jump"); // 白 → 虹
  */
-export function buildIntroStages(target: RarityPreset): IntroStage[] {
-  const steps = countPromotions(target);
-  if (steps === 0) return [{ at: 0, rarity: target }];
+export function buildIntroStages(target: RarityPreset, step: PromotionStep): IntroStage[] {
+  const targetIndex = countPromotions(target);
+  if (targetIndex === 0) return [{ at: 0, rarity: target }];
 
-  const stages: IntroStage[] = [];
-  for (let step = 0; step <= steps; step++) {
-    stages.push({
-      // 白をひと呼吸見せてから上げ始め、最後の色は弾ける前に必ず出しておく。
-      // 段数が変わっても着地の時刻は動かないので、尺の詰まり方が一定になる
-      at: step === 0 ? 0 : 0.2 + (0.55 * step) / steps,
-      rarity: RARITY_PRESETS[step]!,
-    });
+  // 通る色を決める。先頭は必ず白、末尾は必ず目的の色
+  const path = [0];
+  if (step === "all") {
+    for (let i = 1; i <= targetIndex; i++) path.push(i);
+  } else {
+    // 間引きは中間の色をひとつだけ挟む。青のように 1 段しかない場合は
+    // 挟める色がないので、結果的に一撃と同じ道のりになる
+    const middle = step === "skip" ? Math.floor(targetIndex / 2) : 0;
+    if (middle > 0) path.push(middle);
+    path.push(targetIndex);
   }
-  return stages;
+
+  const hops = path.length - 1;
+  return path.map((rarityIndex, i) => ({
+    // 白をひと呼吸見せてから上げ始め、最後の色は弾ける前に必ず出しておく。
+    // 刻み方が変わっても着地の時刻は動かないので、溜めの長さが一定になる
+    at: i === 0 ? 0 : 0.2 + (0.55 * i) / hops,
+    rarity: RARITY_PRESETS[rarityIndex]!,
+  }));
 }
 
 /**

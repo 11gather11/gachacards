@@ -3,11 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageDropZone } from "./components/ImageDropZone.tsx";
 import { PreviewCanvas } from "./components/PreviewCanvas.tsx";
 import { RarityPicker } from "./components/RarityPicker.tsx";
-import type { IntroMode } from "./card/intro.ts";
+import type { IntroMode, PromotionStep } from "./card/intro.ts";
 import { buildIntroStages, computeIntroDuration, createIntroParticles } from "./card/intro.ts";
 import { createParticles } from "./card/particles.ts";
 import type { RarityId } from "./card/rarity.ts";
-import { RARITY_PRESETS, getRarity } from "./card/rarity.ts";
+import { getRarity } from "./card/rarity.ts";
 import type { CardScene } from "./card/render.ts";
 import { computeCardSize, computeTimeline } from "./card/render.ts";
 import { canExportTransparentWebm, exportWebm } from "./export/webm.ts";
@@ -53,6 +53,7 @@ export function App() {
   const [duration, setDuration] = useState(INITIAL.duration);
   const [fps, setFps] = useState<number>(INITIAL.fps);
   const [introMode, setIntroMode] = useState<IntroMode>(INITIAL.introMode);
+  const [promotionStep, setPromotionStep] = useState<PromotionStep>(INITIAL.promotionStep);
   const [orientation, setOrientation] = useState<Orientation>(INITIAL.orientation);
   const [sizeId, setSizeId] = useState(INITIAL.sizeId);
   const [qualityId, setQualityId] = useState(INITIAL.qualityId);
@@ -80,6 +81,7 @@ export function App() {
       duration,
       fps,
       introMode,
+      promotionStep,
       orientation,
       sizeId,
       qualityId,
@@ -94,6 +96,7 @@ export function App() {
     duration,
     fps,
     introMode,
+    promotionStep,
     orientation,
     sizeId,
     qualityId,
@@ -120,7 +123,11 @@ export function App() {
   const introDuration = computeIntroDuration(duration, introMode === "on");
   // 尺を伸ばすとファイルがどれだけ膨らむかを、書き出す前に見せる
   const estimatedSizeMb = (quality.bitrate * duration) / 8 / 1024 / 1024;
-  const promotionCount = RARITY_PRESETS.findIndex((preset) => preset.id === rarityId);
+  // 段取りは表示にも使うので、シーンと同じものをここで組み立てて共有する
+  const introStages = useMemo(
+    () => buildIntroStages(rarity, promotionStep),
+    [rarity, promotionStep],
+  );
 
   const scene = useMemo<CardScene>(() => {
     const card = computeCardSize(size.width, size.height);
@@ -129,7 +136,7 @@ export function App() {
       introMode === "off"
         ? null
         : {
-            stages: buildIntroStages(rarity),
+            stages: introStages,
             particles: createIntroParticles(64, seed),
           };
     const particles = createParticles(
@@ -170,6 +177,7 @@ export function App() {
     duration,
     introMode,
     introDuration,
+    introStages,
     loop,
     seed,
   ]);
@@ -296,13 +304,22 @@ export function App() {
             入りの演出（光が集まって弾ける）
           </label>
           {introMode === "on" && (
-            <p className="notice">
-              {promotionCount > 0
-                ? `白 → ${rarity.label} まで ${promotionCount} 段上がる`
-                : "白のまま（昇格なし）"}
-              {" / "}
-              {introDuration.toFixed(2)} 秒
-            </p>
+            <>
+              <select
+                className="input"
+                value={promotionStep}
+                onChange={(event) => setPromotionStep(event.target.value as PromotionStep)}
+              >
+                <option value="all">全段（1 段ずつ上がる）</option>
+                <option value="skip">間引き（途中を飛ばす）</option>
+                <option value="jump">一気に（白から一撃）</option>
+              </select>
+              <p className="notice">
+                {introStages.map((stage) => stage.rarity.label).join(" → ")}
+                {" / "}
+                {introDuration.toFixed(2)} 秒
+              </p>
+            </>
           )}
         </section>
 
