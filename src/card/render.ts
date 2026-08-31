@@ -6,6 +6,8 @@
  * 画面で見えているものと書き出されるものが食い違うことがない。
  */
 
+import type { IntroConfig } from "./intro.ts";
+import { drawIntro } from "./intro.ts";
 import type { Particle } from "./particles.ts";
 import { particleStateAt } from "./particles.ts";
 import type { RarityPreset } from "./rarity.ts";
@@ -45,12 +47,18 @@ export interface CardScene {
   duration: number;
   /** 事前生成済みのパーティクル。 */
   particles: readonly Particle[];
+  /** カードが出る前の共通演出。使わないなら `null`。 */
+  intro: IntroConfig | null;
+  /** 入り演出の長さ（秒）。`intro` が `null` なら 0。 */
+  introDuration: number;
   /** ループ用途で退場フェードを省くなら `true`。 */
   loop: boolean;
 }
 
 /** 演出の切り替わり時刻。 */
 export interface Timeline {
+  /** 入り演出が終わり、カードが動き始める時刻（秒）。入り演出なしなら 0。 */
+  introEnd: number;
   /** 登場アニメが終わり、カードが定位置に着く時刻（秒）。 */
   entranceEnd: number;
   /** 退場フェードが始まる時刻（秒）。ループ時は尺と同じ値。 */
@@ -76,11 +84,14 @@ interface CardBox {
  * @param duration - 全体の尺（秒）
  * @param loop - ループ用途かどうか
  */
-export function computeTimeline(duration: number, loop: boolean): Timeline {
-  // 登場は尺の 2 割強、ただし長尺でも 0.9 秒を超えると間延びするので頭打ちにする
-  const entranceEnd = Math.min(0.9, duration * 0.22);
+export function computeTimeline(duration: number, loop: boolean, introDuration = 0): Timeline {
+  // 入り演出のぶんカードの登場は後ろにずれる。残り時間から登場の長さを取り直す
+  const introEnd = Math.min(introDuration, Math.max(0, duration - 0.5));
+  const remaining = duration - introEnd;
+  // 登場は残りの 2 割強、ただし長尺でも 0.9 秒を超えると間延びするので頭打ちにする
+  const entranceEnd = introEnd + Math.min(0.9, remaining * 0.22);
   const exitStart = loop ? duration : Math.max(entranceEnd + 0.2, duration - 0.55);
-  return { entranceEnd, exitStart };
+  return { introEnd, entranceEnd, exitStart };
 }
 
 /**
@@ -172,7 +183,8 @@ interface CardTransform {
  */
 function computeTransform(scene: CardScene, timeline: Timeline, time: number): CardTransform {
   const box = computeCardBox(scene);
-  const enter = progress(time, 0, timeline.entranceEnd);
+  // 入り演出が終わってから登場を始める
+  const enter = progress(time, timeline.introEnd, timeline.entranceEnd);
   let scale = 1;
   let offsetY = 0;
   let alpha = 1;
@@ -556,7 +568,13 @@ function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): vo
  * renderFrame(ctx, 1.2, scene);
  */
 export function renderFrame(ctx: Canvas2dContext, time: number, scene: CardScene): void {
-  const timeline = computeTimeline(scene.duration, scene.loop);
+  const timeline = computeTimeline(scene.duration, scene.loop, scene.introDuration);
+
+  // 入り演出はカードのフェードとは別物なので、レイヤーを挟まずそのまま描く
+  if (scene.intro) {
+    drawIntro(ctx, scene, scene.intro, timeline.introEnd, time);
+  }
+
   const transform = computeTransform(scene, timeline, time);
   if (transform.alpha <= 0) return;
 

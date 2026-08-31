@@ -6,6 +6,7 @@
  * 前回と同じカードを作り直せなくなるため、設定一式を保存している。
  */
 
+import type { IntroMode } from "./card/intro.ts";
 import type { RarityId } from "./card/rarity.ts";
 import type { Orientation } from "./types.ts";
 
@@ -22,6 +23,8 @@ export interface Settings {
   /** 尺（秒）。 */
   duration: number;
   fps: number;
+  /** カードが出る前の共通演出の出し方。 */
+  introMode: IntroMode;
   /** カードの向き。 */
   orientation: Orientation;
   /** {@link SIZE_PRESETS} の ID。 */
@@ -43,6 +46,7 @@ export const DEFAULT_SETTINGS: Settings = {
   subtitle: "",
   duration: 4,
   fps: 30,
+  introMode: "promote",
   // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする
   orientation: "landscape",
   sizeId: "md",

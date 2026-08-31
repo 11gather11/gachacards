@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageDropZone } from "./components/ImageDropZone.tsx";
 import { PreviewCanvas } from "./components/PreviewCanvas.tsx";
 import { RarityPicker } from "./components/RarityPicker.tsx";
+import type { IntroMode } from "./card/intro.ts";
+import { buildIntroStages, computeIntroDuration, createIntroParticles } from "./card/intro.ts";
 import { createParticles } from "./card/particles.ts";
 import type { RarityId } from "./card/rarity.ts";
 import { getRarity } from "./card/rarity.ts";
@@ -50,6 +52,7 @@ export function App() {
   const [subtitle, setSubtitle] = useState(INITIAL.subtitle);
   const [duration, setDuration] = useState(INITIAL.duration);
   const [fps, setFps] = useState<number>(INITIAL.fps);
+  const [introMode, setIntroMode] = useState<IntroMode>(INITIAL.introMode);
   const [orientation, setOrientation] = useState<Orientation>(INITIAL.orientation);
   const [sizeId, setSizeId] = useState(INITIAL.sizeId);
   const [qualityId, setQualityId] = useState(INITIAL.qualityId);
@@ -76,13 +79,27 @@ export function App() {
       subtitle,
       duration,
       fps,
+      introMode,
       orientation,
       sizeId,
       qualityId,
       loop,
       seed,
     });
-  }, [rarityId, badge, title, subtitle, duration, fps, orientation, sizeId, qualityId, loop, seed]);
+  }, [
+    rarityId,
+    badge,
+    title,
+    subtitle,
+    duration,
+    fps,
+    introMode,
+    orientation,
+    sizeId,
+    qualityId,
+    loop,
+    seed,
+  ]);
 
   // 書き出し結果の URL は差し替えのたびに解放する
   useEffect(() => {
@@ -102,7 +119,15 @@ export function App() {
 
   const scene = useMemo<CardScene>(() => {
     const card = computeCardSize(size.width, size.height);
-    const timeline = computeTimeline(duration, loop);
+    const introDuration = computeIntroDuration(duration, introMode !== "off");
+    const timeline = computeTimeline(duration, loop, introDuration);
+    const intro =
+      introMode === "off"
+        ? null
+        : {
+            stages: buildIntroStages(rarity, introMode, seed),
+            particles: createIntroParticles(64, seed),
+          };
     const particles = createParticles(
       rarity,
       {
@@ -127,9 +152,11 @@ export function App() {
       subtitle,
       duration,
       particles,
+      intro,
+      introDuration,
       loop,
     };
-  }, [size, rarity, effectiveBadge, artwork, title, subtitle, duration, loop, seed]);
+  }, [size, rarity, effectiveBadge, artwork, title, subtitle, duration, introMode, loop, seed]);
 
   const handleExport = async () => {
     setError(null);
@@ -241,6 +268,23 @@ export function App() {
             value={duration}
             onChange={(event) => setDuration(Number(event.target.value))}
           />
+        </section>
+
+        <section className="field">
+          <label className="field__label" htmlFor="intro">
+            入りの演出
+          </label>
+          <select
+            id="intro"
+            className="input"
+            value={introMode}
+            onChange={(event) => setIntroMode(event.target.value as IntroMode)}
+          >
+            <option value="off">なし（すぐカードが出る）</option>
+            <option value="none">光の収束（色は最初から確定）</option>
+            <option value="promote">光の収束 + 昇格（下位色から上がる）</option>
+            <option value="fake">光の収束 + 昇格 + 裏切り（ガセ落ちあり）</option>
+          </select>
         </section>
 
         <section className="field field--row">
