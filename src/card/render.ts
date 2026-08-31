@@ -286,7 +286,7 @@ function computeGlowBlur(scene: CardScene, box: CardBox, scale: number, strength
   // 端からわずかに漏れる裾は fadeFrameEdges が最後に落とすので、
   // ここで光を削り込みすぎない
   const maxBlur = (margin * 0.85) / scale
-  return Math.min(box.unit * 0.28 * strength, maxBlur)
+  return Math.min(box.unit * 0.34 * strength, maxBlur)
 }
 
 /** 枠に使うグラデーションを作る。虹だけは時間で回るコニックグラデーションにする。 */
@@ -825,11 +825,21 @@ function drawCard(
   if (glowBlur > 0) {
     ctx.save()
     ctx.shadowColor = scene.rarity.glowColor
-    ctx.shadowBlur = glowBlur
     ctx.fillStyle = 'rgba(0,0,0,0.9)'
     roundedRectPath(ctx, box)
+
+    // 締まった内側の光。一度の shadow では薄いので、同じ形を重ねて濃くする。
+    // ここを重ねすぎると芯が硬くなるので、濃さは外側の拡散で稼ぐ
+    ctx.shadowBlur = glowBlur
     ctx.fill()
-    // 一度の shadow では薄いので、同じ形を重ねて滲みを濃くする
+    ctx.fill()
+
+    // 遠くまで届く薄い拡散を上から重ねる。一層のまま濃くすると縁が硬くなるが、
+    // 広い層を足すと光量を上げても自然に散る。
+    // ここは端まで届きうるが、最後に fadeFrameEdges が縁を落とすので切れ目は出ない
+    ctx.globalAlpha *= 0.5
+    ctx.shadowBlur = glowBlur * 2.2
+    ctx.fill()
     ctx.fill()
     ctx.restore()
   }
