@@ -118,6 +118,8 @@ export function App() {
   const effectiveBadge = badge ?? rarity.badge;
   // 上位ほど通る段数が多く、そのぶん前振りが長くなる
   const introDuration = computeIntroDuration(rarity, duration, introMode === "on");
+  // 尺を伸ばすとファイルがどれだけ膨らむかを、書き出す前に見せる
+  const estimatedSizeMb = (quality.bitrate * duration) / 8 / 1024 / 1024;
   const promotionCount = RARITY_PRESETS.findIndex((preset) => preset.id === rarityId);
 
   const scene = useMemo<CardScene>(() => {
@@ -271,13 +273,13 @@ export function App() {
 
         <section className="field">
           <label className="field__label" htmlFor="duration">
-            尺: {duration.toFixed(1)} 秒
+            尺: {duration.toFixed(1)} 秒（推定 {estimatedSizeMb.toFixed(1)} MB）
           </label>
           <input
             id="duration"
             type="range"
-            min={1.5}
-            max={8}
+            min={2}
+            max={30}
             step={0.5}
             value={duration}
             onChange={(event) => setDuration(Number(event.target.value))}
