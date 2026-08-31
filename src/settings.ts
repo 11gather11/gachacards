@@ -44,7 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   badge: null,
   title: "",
   subtitle: "",
-  duration: 4,
+  duration: 8,
   fps: 30,
   introMode: "on",
   // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする
