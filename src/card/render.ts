@@ -109,9 +109,10 @@ export function computeCardSize(
 ): { width: number; height: number } {
   // フレームが横長ならカードも寝かせる。縦横比は 2:3 のまま向きだけ入れ替える
   const isLandscape = frameWidth > frameHeight
-  // カードは 2:3 に固定。金や虹のグローはカード短辺の 3 割ほど外に伸びるので、
-  // それを飲み込めるだけの余白がフレーム側に残る大きさにしている
-  const long = (isLandscape ? frameWidth : frameHeight) * 0.64
+  // カードは 2:3 に固定。金や虹のグローはカード短辺の 4 割ほど外に伸び、
+  // さらにスラム時は 1.6 倍まで膨らむ。その両方を飲み込む余白がフレーム側に
+  // 残る大きさにしている
+  const long = (isLandscape ? frameWidth : frameHeight) * 0.58
   const short = long * (2 / 3)
   return isLandscape ? { width: long, height: short } : { width: short, height: long }
 }
@@ -286,7 +287,7 @@ function computeGlowBlur(scene: CardScene, box: CardBox, scale: number, strength
   // 端からわずかに漏れる裾は fadeFrameEdges が最後に落とすので、
   // ここで光を削り込みすぎない
   const maxBlur = (margin * 0.85) / scale
-  return Math.min(box.unit * 0.34 * strength, maxBlur)
+  return Math.min(box.unit * 0.4 * strength, maxBlur)
 }
 
 /** 枠に使うグラデーションを作る。虹だけは時間で回るコニックグラデーションにする。 */
