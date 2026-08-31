@@ -282,8 +282,9 @@ function computeGlowBlur(scene: CardScene, box: CardBox, scale: number, strength
   )
   if (margin <= 0) return 0
 
-  // 余白いっぱいまで使うと端で完全に 0 になりきらないので、少し内側で止める。
-  // 得られた上限は拡大後の値なので、ローカル座標に戻してから使う
+  // 得られた上限は拡大後の値なので、ローカル座標に戻してから使う。
+  // 端からわずかに漏れる裾は fadeFrameEdges が最後に落とすので、
+  // ここで光を削り込みすぎない
   const maxBlur = (margin * 0.85) / scale
   return Math.min(box.unit * 0.28 * strength, maxBlur)
 }
@@ -600,9 +601,19 @@ function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): vo
     const state = particleStateAt(particle, time)
     if (!state || state.alpha <= 0) continue
 
+    // 粒はカードの外まで飛ぶ。フレーム端で切れると加算合成のぶん
+    // 四角い縁がはっきり出るので、端に近づくほど薄くして消す
+    const fadeMargin = Math.min(scene.width, scene.height) * 0.09
+    const distanceToEdge = Math.min(
+      scene.width / 2 - Math.abs(state.x),
+      scene.height / 2 - Math.abs(state.y),
+    )
+    const edgeFade = clamp(distanceToEdge / fadeMargin, 0, 1)
+    if (edgeFade <= 0) continue
+
     ctx.save()
     // カード側のフェードに乗せる。代入すると退場後も粒だけが残る
-    ctx.globalAlpha *= clamp(state.alpha, 0, 1)
+    ctx.globalAlpha *= clamp(state.alpha, 0, 1) * edgeFade
     ctx.globalCompositeOperation = 'lighter'
     ctx.translate(state.x, state.y)
     ctx.rotate(state.rotation)
@@ -646,6 +657,30 @@ function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): vo
   }
 }
 
+/**
+ * フレームの縁に向けてアルファを落とす。
+ *
+ * グローや粒、ブラーで伸びた光が端に届くと、そこで断ち切られて透過素材に
+ * 四角い縁が残る。個々の演出の半径を削って回避すると光そのものが痩せるので、
+ * 最後にマスクを掛けて縁だけを確実に 0 にする。
+ *
+ * ぼかした矩形を destination-in で合成しているだけなので、
+ * 中身がどれだけ変わってもこの一手で必ず縁が消える。
+ *
+ * @param ctx - 描画先
+ * @param width - フレームの幅（px）
+ * @param height - フレームの高さ（px）
+ */
+function fadeFrameEdges(ctx: Canvas2dContext, width: number, height: number): void {
+  const fade = Math.min(width, height) * 0.05
+  ctx.save()
+  ctx.globalCompositeOperation = 'destination-in'
+  ctx.filter = `blur(${fade / 2}px)`
+  ctx.fillStyle = '#000'
+  ctx.fillRect(fade, fade, width - fade * 2, height - fade * 2)
+  ctx.restore()
+}
+
 /** モーションブラーの設定。 */
 export interface MotionBlur {
   /** 1 フレームあたりのサンプル数。1 ならブラーなし。 */
@@ -682,27 +717,25 @@ export function renderFrameBlurred(
   scene: CardScene,
   blur: MotionBlur | null,
 ): void {
-  if (!blur || blur.samples <= 1) {
+  const layer = blur && blur.samples > 1 ? acquireLayer(ctx, scene.width, scene.height) : null
+
+  if (!blur || blur.samples <= 1 || !layer) {
     renderFrame(ctx, time, scene)
-    return
+  } else {
+    const span = blur.frameDuration * blur.shutter
+    ctx.save()
+    for (let i = 0; i < blur.samples; i++) {
+      layer.ctx.clearRect(0, 0, scene.width, scene.height)
+      renderFrame(layer.ctx, time + (i / blur.samples) * span, scene)
+      ctx.globalAlpha = 1 / (i + 1)
+      ctx.drawImage(layer.canvas, 0, 0)
+    }
+    ctx.restore()
   }
 
-  const layer = acquireLayer(ctx, scene.width, scene.height)
-  if (!layer) {
-    // レイヤーを用意できない環境ではブラーを諦めて 1 枚だけ描く
-    renderFrame(ctx, time, scene)
-    return
-  }
-
-  const span = blur.frameDuration * blur.shutter
-  ctx.save()
-  for (let i = 0; i < blur.samples; i++) {
-    layer.ctx.clearRect(0, 0, scene.width, scene.height)
-    renderFrame(layer.ctx, time + (i / blur.samples) * span, scene)
-    ctx.globalAlpha = 1 / (i + 1)
-    ctx.drawImage(layer.canvas, 0, 0)
-  }
-  ctx.restore()
+  // ブラーを掛けるとサブフレームごとの揺れ幅が乗って光が端まで届きやすい。
+  // 合成しきったあとに縁を落とす
+  fadeFrameEdges(ctx, scene.width, scene.height)
 }
 
 /**
