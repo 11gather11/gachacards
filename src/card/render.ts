@@ -701,10 +701,11 @@ export interface MotionBlur {
  * ずらして何度か描き、平均すればそのままモーションブラーになる。
  * 速度ベクトルを持ち回る必要がない。
  *
- * 重ねる不透明度を 1/(i+1) にしているのがこの実装の肝。source-over で
- * 単純に 1/N ずつ重ねても平均にはならないが、この係数なら
- * 「今までの平均」と「新しいサンプル」が正しい比で混ざり、
- * 色だけでなくアルファも平均される。透過を保ったままブラーが掛かる。
+ * 合成は加算 (`lighter`) で、各サンプルを 1/N の濃さで足していく。
+ * `source-over` で重ねると色は平均されるがアルファが平均されず、
+ * 一枚でも不透明なサンプルがあればその場所は不透明のまま残る。
+ * 結果、光が通り過ぎた跡が「不透明な暗い色」で埋まって黒ずむ。
+ * 加算ならアルファも色も（プリマルチプライドのまま）正しく平均される。
  *
  * @param ctx - 描画先。呼び出し前にクリアしておくこと
  * @param time - アニメーション先頭からの経過秒
@@ -724,10 +725,11 @@ export function renderFrameBlurred(
   } else {
     const span = blur.frameDuration * blur.shutter
     ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = 1 / blur.samples
     for (let i = 0; i < blur.samples; i++) {
       layer.ctx.clearRect(0, 0, scene.width, scene.height)
       renderFrame(layer.ctx, time + (i / blur.samples) * span, scene)
-      ctx.globalAlpha = 1 / (i + 1)
       ctx.drawImage(layer.canvas, 0, 0)
     }
     ctx.restore()
