@@ -384,3 +384,17 @@ body {
   gap: 12px;
   flex-wrap: wrap;
 }
+
+.seed {
+  display: flex;
+  gap: 6px;
+}
+
+.seed .input {
+  min-width: 0;
+}
+
+.seed .button {
+  flex: none;
+  padding: 10px 12px;
+}

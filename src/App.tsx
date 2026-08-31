@@ -9,6 +9,7 @@ import { getRarity } from "./card/rarity.ts";
 import type { CardScene } from "./card/render.ts";
 import { computeCardSize, computeTimeline } from "./card/render.ts";
 import { canExportTransparentWebm, exportWebm } from "./export/webm.ts";
+import { drawSeed, loadSettings, saveSettings } from "./settings.ts";
 import type { Artwork } from "./types.ts";
 import { QUALITY_PRESETS, SIZE_PRESETS } from "./types.ts";
 
@@ -27,6 +28,9 @@ interface ExportedFile {
 
 const FPS_OPTIONS = [24, 30, 60] as const;
 
+/** 前回の設定。アプリ起動時に一度だけ読む。 */
+const INITIAL = loadSettings();
+
 /** Blob をファイルとして保存させる。 */
 function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
@@ -40,15 +44,15 @@ function downloadBlob(blob: Blob, fileName: string): void {
 
 export function App() {
   const [artwork, setArtwork] = useState<Artwork | null>(null);
-  const [rarityId, setRarityId] = useState<RarityId>("gold");
-  const [title, setTitle] = useState("");
-  const [subtitle, setSubtitle] = useState("");
-  const [duration, setDuration] = useState(4);
-  const [fps, setFps] = useState<number>(30);
-  const [sizeId, setSizeId] = useState(SIZE_PRESETS[1]!.id);
-  const [qualityId, setQualityId] = useState(QUALITY_PRESETS[1]!.id);
-  const [loop, setLoop] = useState(false);
-  const [seed, setSeed] = useState(1);
+  const [rarityId, setRarityId] = useState<RarityId>(INITIAL.rarityId);
+  const [title, setTitle] = useState(INITIAL.title);
+  const [subtitle, setSubtitle] = useState(INITIAL.subtitle);
+  const [duration, setDuration] = useState(INITIAL.duration);
+  const [fps, setFps] = useState<number>(INITIAL.fps);
+  const [sizeId, setSizeId] = useState(INITIAL.sizeId);
+  const [qualityId, setQualityId] = useState(INITIAL.qualityId);
+  const [loop, setLoop] = useState(INITIAL.loop);
+  const [seed, setSeed] = useState(INITIAL.seed);
   const [background, setBackground] = useState<PreviewBackground>("checker");
 
   const [progress, setProgress] = useState<number | null>(null);
@@ -60,6 +64,11 @@ export function App() {
   useEffect(() => {
     void canExportTransparentWebm().then(setIsSupported);
   }, []);
+
+  // 別の日に同じカードを作り直せるよう、seed を含めた設定を残しておく
+  useEffect(() => {
+    saveSettings({ rarityId, title, subtitle, duration, fps, sizeId, qualityId, loop, seed });
+  }, [rarityId, title, subtitle, duration, fps, sizeId, qualityId, loop, seed]);
 
   // 書き出し結果の URL は差し替えのたびに解放する
   useEffect(() => {
@@ -122,7 +131,8 @@ export function App() {
       setResult({
         blob: exported.blob,
         url: URL.createObjectURL(exported.blob),
-        fileName: `${artwork?.fileName ?? "card"}-${rarityId}.webm`,
+        // 出来上がったファイルから seed を辿れるよう、名前に焼き込む
+        fileName: `${artwork?.fileName ?? "card"}-${rarityId}-s${seed}.webm`,
         summary: `${(exported.blob.size / 1024 / 1024).toFixed(2)} MB / ${exported.frameCount} フレーム / ${(exported.elapsedMs / 1000).toFixed(1)} 秒`,
       });
     } catch (caught) {
@@ -236,10 +246,27 @@ export function App() {
             </select>
           </label>
           <label className="field__sub">
-            <span className="field__label">演出の種</span>
-            <button type="button" className="button" onClick={() => setSeed((value) => value + 1)}>
-              🎲 パーティクル再抽選
-            </button>
+            <span className="field__label">パーティクルの種</span>
+            <div className="seed">
+              <input
+                type="number"
+                className="input"
+                value={seed}
+                min={0}
+                step={1}
+                onChange={(event) =>
+                  setSeed(Math.max(0, Math.floor(Number(event.target.value) || 0)))
+                }
+              />
+              <button
+                type="button"
+                className="button"
+                title="別の配置を引き直す"
+                onClick={() => setSeed(drawSeed())}
+              >
+                🎲
+              </button>
+            </div>
           </label>
         </section>
 
