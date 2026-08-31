@@ -383,6 +383,54 @@ export function drawIntro(
     ctx.stroke();
   }
 
+  // 中心の十字フレア。レンズフレアのように長く伸ばして光の強さを誇張する
+  const flareLength = Math.min(
+    maxRadius,
+    maxRadius * (0.5 + 0.5 * easeOutCubic(grow)) * (1 + 0.5 * burst),
+  );
+  ctx.globalAlpha = 0.55 * grow * (1 - burst * 0.3);
+  for (const angle of [0, Math.PI / 2]) {
+    const fx = Math.cos(angle) * flareLength;
+    const fy = Math.sin(angle) * flareLength;
+    const flare = ctx.createLinearGradient(-fx, -fy, fx, fy);
+    flare.addColorStop(0, "rgba(0,0,0,0)");
+    flare.addColorStop(0.5, "#ffffff");
+    flare.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.strokeStyle = flare;
+    ctx.lineWidth = unit * (angle === 0 ? 0.012 : 0.008);
+    ctx.beginPath();
+    ctx.moveTo(-fx, -fy);
+    ctx.lineTo(fx, fy);
+    ctx.stroke();
+  }
+
+  // 弾けた瞬間、溜めた粒が一気に外へ散る
+  if (burst > 0) {
+    for (const particle of intro.particles) {
+      // 粒ごとに散る速さを変える。同じ速さで飛ばすと、きれいな同心円になって
+      // 爆発ではなく波紋に見えてしまう
+      const spread = easeOutCubic(Math.min(1, burst * (0.65 + particle.travelSeconds)));
+      const distance = Math.min(
+        maxRadius,
+        maxRadius * spread * (0.45 + particle.startRadius * 1.3),
+      );
+      const angle = particle.angle + particle.swirl * 0.3;
+      const x = Math.cos(angle) * distance;
+      const y = Math.sin(angle) * distance;
+      const size = particle.size * unit * (1 - spread * 0.35);
+
+      ctx.globalAlpha = (1 - spread) * 0.9;
+      const blast = ctx.createRadialGradient(x, y, 0, x, y, size * 3);
+      blast.addColorStop(0, "#ffffff");
+      blast.addColorStop(0.35, color);
+      blast.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = blast;
+      ctx.beginPath();
+      ctx.arc(x, y, size * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   // 中心の光球。溜めるほど大きく、昇格の瞬間に一段膨らむ
   const pulseScale = 1 + 0.1 * Math.sin(time * 26) * grow;
   const orbRadius =
@@ -408,12 +456,20 @@ export function drawIntro(
     // 走るリングに加えて、中心から一瞬だけ閃光を広げる。
     // 色が変わったことを、目を離していても気づける強さにする
     const spread = easeOutCubic(1 - promotion);
+    // リングを 2 重にして、後ろから追いかけるようにずらす
     drawSoftRing(
       ctx,
       maxRadius * (0.15 + 0.6 * spread),
       unit * 0.03 * promotion,
       "#ffffff",
       promotion * promotion * 0.85,
+    );
+    drawSoftRing(
+      ctx,
+      maxRadius * (0.15 + 0.6 * spread) * 0.62,
+      unit * 0.022 * promotion,
+      color,
+      promotion * promotion * 0.7,
     );
 
     const flashRadius = maxRadius * (0.25 + 0.75 * spread);

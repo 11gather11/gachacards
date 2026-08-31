@@ -472,15 +472,21 @@ function drawShockwave(
   // フレームの外まで広げると、切れた円弧が四角い縁として残ってしまう。
   // 短辺の半分を上限にして、消えるまでをフレーム内に収める
   const maxRadius = Math.min(scene.width, scene.height) * 0.45;
-  const radius = maxRadius * (0.25 + 0.75 * easeOutCubic(t));
   ctx.save();
   // カード側のフェードに乗せる。代入するとフェードを打ち消してしまう
   ctx.globalAlpha *= (1 - t) * strength * 0.8;
   ctx.strokeStyle = scene.rarity.glowColor;
-  ctx.lineWidth = scene.width * 0.012 * (1 - t);
-  ctx.beginPath();
-  ctx.arc(0, 0, radius, 0, Math.PI * 2);
-  ctx.stroke();
+
+  // 波を 3 本、少しずつ遅らせて出す。1 本だけだと着地の衝撃が軽い
+  for (let i = 0; i < 3; i++) {
+    const delayed = progress(t, i * 0.16, 1);
+    if (delayed <= 0) continue;
+    ctx.globalAlpha *= i === 0 ? 1 : 0.62;
+    ctx.lineWidth = scene.width * 0.012 * (1 - delayed);
+    ctx.beginPath();
+    ctx.arc(0, 0, maxRadius * (0.25 + 0.75 * easeOutCubic(delayed)), 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
