@@ -30,10 +30,16 @@ export interface IntroParticle {
   angle: number;
   /** 出現時の中心からの距離。フレーム短辺に対する比率。 */
   startRadius: number;
-  /** 入り演出内での出現時刻（0-1）。 */
+  /**
+   * 出現時刻。入り演出の長さに対する比率（0-1）で持つ。
+   * 演出が長いレアリティでは、そのぶん粒が長く湧き続ける。
+   */
   delay: number;
-  /** 中心に届くまでの長さ（0-1）。 */
-  span: number;
+  /**
+   * 中心に届くまでの秒数。
+   * 比率ではなく実時間で持つことで、演出の長さが変わっても吸い込む速さは変わらない。
+   */
+  travelSeconds: number;
   /** 粒の大きさ。フレーム短辺に対する比率。 */
   size: number;
   /** 吸い込まれる間に回り込む角度（ラジアン）。 */
@@ -131,7 +137,7 @@ export function createIntroParticles(count: number, seed: number): IntroParticle
       startRadius: randomBetween(rng, 0.2, 0.45),
       // 弾ける直前まで吸い込みが続くよう、出現を演出の前半〜中盤に散らす
       delay: randomBetween(rng, 0, 0.7),
-      span: randomBetween(rng, 0.25, 0.5),
+      travelSeconds: randomBetween(rng, 0.35, 0.7),
       size: randomBetween(rng, 0.004, 0.012),
       swirl: randomBetween(rng, -1.2, 1.2),
     });
@@ -154,15 +160,28 @@ export function currentStage(stages: readonly IntroStage[], p: number): IntroSta
   return current;
 }
 
-/** 直前の色替わりからどれだけ経ったかを 0-1 で返す。1 なら十分時間が経っている。 */
-function sinceStageChange(stages: readonly IntroStage[], p: number): number {
+/** 昇格の合図を見せる長さ（秒）。演出の長さによらず一定にする。 */
+const PROMOTION_FLASH_SECONDS = 0.18;
+
+/**
+ * 直前の色替わりからどれだけ経ったかを 0-1 で返す。1 なら十分時間が経っている。
+ *
+ * 比率ではなく秒で測る。正規化時間で測ると、演出が長いレアリティほど
+ * 合図の光がゆっくり間延びしてしまうため。
+ */
+function sinceStageChange(
+  stages: readonly IntroStage[],
+  time: number,
+  introDuration: number,
+): number {
   let last = 0;
   for (const stage of stages) {
-    if (p >= stage.at) last = stage.at;
+    if (time >= stage.at * introDuration) last = stage.at;
   }
   if (last === 0) return 1;
-  // 色が変わってからの 0.12（正規化時間）を昇格の見せ場として使う
-  return progress(p, last, last + 0.12);
+
+  const changedAt = last * introDuration;
+  return progress(time, changedAt, changedAt + PROMOTION_FLASH_SECONDS);
 }
 
 /** 入り演出の描画に必要なフレームの寸法。 */
@@ -255,11 +274,19 @@ export function drawIntro(
   // ここを超えるとフレーム端で光が切られる
   const maxRadius = unit * 0.46;
 
-  // 溜めと弾けを分ける。弾けはカードの登場に重なる
-  const charge = progress(p, 0, 0.86);
-  const burst = progress(p, 0.86, 1);
+  // 溜めと弾けを分ける。弾けはカードの登場に重なる。
+  // 弾ける速さは演出の長さによらず一定にしたいので、秒で切り出す
+  const burstSeconds = Math.min(0.22, introDuration * 0.35);
+  const burstStart = introDuration - burstSeconds;
+  // 光の立ち上がりも実時間で決める。演出全体の進行に紐づけると、
+  // 尺の長い上位レアリティほど光り始めがゆっくりになってしまう
+  const grow = progress(time, 0, Math.min(0.5, burstStart));
+  // 段が上がるごとに一段強く光る。上位らしさは「長さ」と「強さ」で出し、
+  // 動きの速さはどのレアリティでも変えない
+  const stageBoost = 1 + Math.max(0, intro.stages.indexOf(stage)) * 0.12;
+  const burst = progress(time, burstStart, introDuration);
   // 色が変わった直後だけ 1 に近づく。昇格の見せ場に使う
-  const promotion = 1 - sinceStageChange(intro.stages, p);
+  const promotion = 1 - sinceStageChange(intro.stages, time, introDuration);
 
   ctx.save();
   ctx.translate(frame.width / 2, frame.height / 2);
@@ -268,10 +295,11 @@ export function drawIntro(
 
   // 回転する放射光。溜めが進むほど長く伸びる
   const rayCount = 12;
-  const rayLength = maxRadius * (0.25 + 0.75 * easeOutCubic(charge));
+  const rayLength = maxRadius * (0.25 + 0.75 * easeOutCubic(grow));
   ctx.save();
-  ctx.rotate(p * 2.2);
-  ctx.globalAlpha = 0.32 * charge * (1 - burst);
+  // 角速度は秒あたりで決める。正規化時刻で回すと長い演出ほど回転が鈍くなる
+  ctx.rotate(time * 1.6);
+  ctx.globalAlpha = 0.32 * grow * (1 - burst);
   for (let i = 0; i < rayCount; i++) {
     const angle = (i / rayCount) * Math.PI * 2;
     const ray = ctx.createLinearGradient(
@@ -291,21 +319,23 @@ export function drawIntro(
   }
   ctx.restore();
 
-  // 外から中心へ繰り返し縮んでいくリング
+  // 外から中心へ繰り返し縮んでいくリング。
+  // 収束の周期も秒で決める。演出が長いレアリティでも吸い込む速さは変わらない
   for (let i = 0; i < 3; i++) {
-    const t = (charge * 2.4 + i / 3) % 1;
+    const t = (time * 1.35 + i / 3) % 1;
     drawSoftRing(
       ctx,
       maxRadius * (1 - easeOutCubic(t)),
       unit * 0.022 * (1 - t * 0.5),
       color,
-      pulse(t) * 0.45 * charge * (1 - burst),
+      pulse(t) * 0.45 * grow * (1 - burst),
     );
   }
 
-  // 吸い込まれる粒
+  // 吸い込まれる粒。湧く間隔は演出の長さに合わせ、吸い込む速さは秒で固定する
   for (const particle of intro.particles) {
-    const q = progress(p, particle.delay, particle.delay + particle.span);
+    const bornAt = particle.delay * introDuration;
+    const q = progress(time, bornAt, bornAt + particle.travelSeconds);
     if (q <= 0 || q >= 1) continue;
 
     const radius = particle.startRadius * unit * (1 - easeOutCubic(q));
@@ -327,14 +357,15 @@ export function drawIntro(
   }
 
   // 中心の光球。溜めるほど大きく、昇格の瞬間に一段膨らむ
-  const pulseScale = 1 + 0.1 * Math.sin(p * 42) * charge;
+  const pulseScale = 1 + 0.1 * Math.sin(time * 26) * grow;
   const orbRadius =
     unit *
-    (0.025 + 0.13 * easeOutCubic(charge)) *
+    (0.025 + 0.13 * easeOutCubic(grow)) *
+    stageBoost *
     pulseScale *
     (1 + 0.6 * promotion) *
     (1 + 2.6 * easeOutCubic(burst));
-  ctx.globalAlpha = Math.min(1, 0.35 + charge) * (1 - burst);
+  ctx.globalAlpha = Math.min(1, 0.35 + grow) * (1 - burst);
   const orb = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.min(orbRadius, maxRadius));
   orb.addColorStop(0, "#ffffff");
   orb.addColorStop(0.35, color);
