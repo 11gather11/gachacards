@@ -2,7 +2,7 @@ import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState } from 'react'
 
 import type { CardScene } from '../card/render.ts'
-import { renderFrame } from '../card/render.ts'
+import { renderFrameBlurred } from '../card/render.ts'
 import { colors } from '../theme.stylex.ts'
 import { ui } from '../ui.ts'
 
@@ -45,6 +45,10 @@ const styles = stylex.create({
 
 interface PreviewCanvasProps {
   scene: CardScene
+  /** モーションブラーのサンプル数。書き出しと同じ値を渡す。 */
+  motionBlurSamples: number
+  /** 書き出し時の fps。ブラーの露光幅を書き出しと揃えるために要る。 */
+  fps: number
 }
 
 /**
@@ -53,7 +57,7 @@ interface PreviewCanvasProps {
  * 再生位置は state ではなく ref で持ち、描画ループの中で canvas とシークバーを
  * 直接更新している。毎フレーム再レンダリングを起こすと 60fps を維持できないため。
  */
-export function PreviewCanvas({ scene }: PreviewCanvasProps) {
+export function PreviewCanvas({ scene, motionBlurSamples, fps }: PreviewCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rangeRef = useRef<HTMLInputElement>(null)
   const timeLabelRef = useRef<HTMLSpanElement>(null)
@@ -88,7 +92,13 @@ export function PreviewCanvas({ scene }: PreviewCanvasProps) {
       }
 
       ctx.clearRect(0, 0, scene.width, scene.height)
-      renderFrame(ctx, timeRef.current, scene)
+      // 露光幅は画面の実フレームレートではなく書き出しの fps に合わせる。
+      // そうしないとプレビューと書き出しでブラーの長さが変わる
+      renderFrameBlurred(ctx, timeRef.current, scene, {
+        samples: motionBlurSamples,
+        frameDuration: 1 / fps,
+        shutter: 0.65,
+      })
 
       if (!scrubbingRef.current && rangeRef.current) {
         rangeRef.current.value = String(timeRef.current)
@@ -102,7 +112,7 @@ export function PreviewCanvas({ scene }: PreviewCanvasProps) {
 
     frameHandle = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(frameHandle)
-  }, [scene])
+  }, [scene, motionBlurSamples, fps])
 
   return (
     <div {...stylex.props(styles.root)}>

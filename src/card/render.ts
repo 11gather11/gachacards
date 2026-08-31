@@ -646,6 +646,65 @@ function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): vo
   }
 }
 
+/** モーションブラーの設定。 */
+export interface MotionBlur {
+  /** 1 フレームあたりのサンプル数。1 ならブラーなし。 */
+  samples: number
+  /** 1 フレームの長さ（秒）。サンプルを散らす幅の基準になる。 */
+  frameDuration: number
+  /**
+   * シャッター開角。1 でフレームいっぱい露光し、0.5 なら前半だけ。
+   * 大きいほどブラーが伸びるが、輪郭は甘くなる。
+   */
+  shutter: number
+}
+
+/**
+ * モーションブラーを掛けて 1 フレーム描く。
+ *
+ * 描画は時刻だけで決まる純関数なので、1 フレームの露光時間のあいだで時刻を
+ * ずらして何度か描き、平均すればそのままモーションブラーになる。
+ * 速度ベクトルを持ち回る必要がない。
+ *
+ * 重ねる不透明度を 1/(i+1) にしているのがこの実装の肝。source-over で
+ * 単純に 1/N ずつ重ねても平均にはならないが、この係数なら
+ * 「今までの平均」と「新しいサンプル」が正しい比で混ざり、
+ * 色だけでなくアルファも平均される。透過を保ったままブラーが掛かる。
+ *
+ * @param ctx - 描画先。呼び出し前にクリアしておくこと
+ * @param time - アニメーション先頭からの経過秒
+ * @param scene - 描画するシーン
+ * @param blur - ブラー設定。`null` かサンプル数 1 ならそのまま 1 枚描く
+ */
+export function renderFrameBlurred(
+  ctx: Canvas2dContext,
+  time: number,
+  scene: CardScene,
+  blur: MotionBlur | null,
+): void {
+  if (!blur || blur.samples <= 1) {
+    renderFrame(ctx, time, scene)
+    return
+  }
+
+  const layer = acquireLayer(ctx, scene.width, scene.height)
+  if (!layer) {
+    // レイヤーを用意できない環境ではブラーを諦めて 1 枚だけ描く
+    renderFrame(ctx, time, scene)
+    return
+  }
+
+  const span = blur.frameDuration * blur.shutter
+  ctx.save()
+  for (let i = 0; i < blur.samples; i++) {
+    layer.ctx.clearRect(0, 0, scene.width, scene.height)
+    renderFrame(layer.ctx, time + (i / blur.samples) * span, scene)
+    ctx.globalAlpha = 1 / (i + 1)
+    ctx.drawImage(layer.canvas, 0, 0)
+  }
+  ctx.restore()
+}
+
 /**
  * シーンの指定時刻を 1 フレーム描画する。呼び出し側でキャンバスをクリアしてから呼ぶこと。
  *

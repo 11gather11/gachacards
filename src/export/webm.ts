@@ -10,7 +10,14 @@
 import { BufferTarget, CanvasSource, Output, WebMOutputFormat, canEncodeVideo } from 'mediabunny'
 
 import type { CardScene } from '../card/render.ts'
-import { renderFrame } from '../card/render.ts'
+import { renderFrameBlurred } from '../card/render.ts'
+
+/**
+ * シャッター開角。フレーム時間のうち、どれだけ露光するか。
+ * 映画の 180 度シャッターに倣うと 0.5 だが、演出では少し伸ばしたほうが
+ * 勢いが出るので気持ち広げている。
+ */
+const SHUTTER = 0.65
 
 /** 書き出しの設定。 */
 export interface ExportOptions {
@@ -19,6 +26,11 @@ export interface ExportOptions {
   fps: number
   /** 目標ビットレート（bps）。 */
   bitrate: number
+  /**
+   * モーションブラーのサンプル数。1 ならブラーなし。
+   * 増やすほど滑らかになるが、描画回数がそのまま倍になる。
+   */
+  motionBlurSamples: number
   /** 進捗通知。0-1 の比率が渡る。 */
   onProgress?: (ratio: number) => void
   /** 中断用シグナル。 */
@@ -57,7 +69,7 @@ export async function canExportTransparentWebm(): Promise<boolean> {
  * const url = URL.createObjectURL(blob);
  */
 export async function exportWebm(options: ExportOptions): Promise<ExportResult> {
-  const { scene, fps, bitrate, onProgress, signal } = options
+  const { scene, fps, bitrate, motionBlurSamples, onProgress, signal } = options
   const startedAt = performance.now()
 
   const canvas = new OffscreenCanvas(scene.width, scene.height)
@@ -89,7 +101,11 @@ export async function exportWebm(options: ExportOptions): Promise<ExportResult> 
 
       const time = index * frameDuration
       ctx.clearRect(0, 0, scene.width, scene.height)
-      renderFrame(ctx, time, scene)
+      renderFrameBlurred(ctx, time, scene, {
+        samples: motionBlurSamples,
+        frameDuration,
+        shutter: SHUTTER,
+      })
       await source.add(time, frameDuration)
 
       onProgress?.((index + 1) / frameCount)

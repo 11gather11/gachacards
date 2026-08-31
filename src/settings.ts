@@ -27,6 +27,8 @@ export interface Settings {
   introMode: IntroMode
   /** 入り演出の長さ（秒）。尺が短ければ自動で詰められる。 */
   introSeconds: number
+  /** モーションブラーのサンプル数。1 ならブラーなし。 */
+  motionBlur: number
   /** 白から目的の色に上がるまでに、途中で通す色。 */
   via: RarityId[]
   /** カードの向き。 */
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   introMode: 'on',
   // 長く溜めるとテンポが落ちるので、既定は短めに置く
   introSeconds: 2,
+  motionBlur: 2,
   // 既定は途中の色をすべて通る（1 段ずつ上がる）
   via: ['blue', 'green', 'red', 'gold'],
   // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする

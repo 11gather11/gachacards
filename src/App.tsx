@@ -178,6 +178,17 @@ interface ExportedFile {
 
 const FPS_OPTIONS = [24, 30, 60] as const
 
+/**
+ * モーションブラーの強さ。サンプル数がそのまま描画回数の倍率になるので、
+ * 上げるほど書き出しに時間がかかる。
+ */
+const MOTION_BLUR_OPTIONS = [
+  { samples: 1, label: 'なし' },
+  { samples: 2, label: '弱 (2x)' },
+  { samples: 4, label: '中 (4x)' },
+  { samples: 8, label: '強 (8x)' },
+] as const
+
 /** 前回の設定。アプリ起動時に一度だけ読む。 */
 const INITIAL = loadSettings()
 
@@ -202,6 +213,7 @@ export function App() {
   const [fps, setFps] = useState<number>(INITIAL.fps)
   const [introMode, setIntroMode] = useState<IntroMode>(INITIAL.introMode)
   const [introSeconds, setIntroSeconds] = useState(INITIAL.introSeconds)
+  const [motionBlur, setMotionBlur] = useState(INITIAL.motionBlur)
   const [via, setVia] = useState<RarityId[]>(INITIAL.via)
   const [orientation, setOrientation] = useState<Orientation>(INITIAL.orientation)
   const [sizeId, setSizeId] = useState(INITIAL.sizeId)
@@ -231,6 +243,7 @@ export function App() {
       fps,
       introMode,
       introSeconds,
+      motionBlur,
       via,
       orientation,
       sizeId,
@@ -247,6 +260,7 @@ export function App() {
     fps,
     introMode,
     introSeconds,
+    motionBlur,
     via,
     orientation,
     sizeId,
@@ -343,6 +357,7 @@ export function App() {
         scene,
         fps,
         bitrate: quality.bitrate,
+        motionBlurSamples: motionBlur,
         signal: controller.signal,
         onProgress: setProgress,
       })
@@ -564,6 +579,20 @@ export function App() {
             </select>
           </label>
           <label {...stylex.props(ui.fieldSub)}>
+            <span {...stylex.props(ui.label)}>ブラー</span>
+            <select
+              {...stylex.props(ui.input)}
+              value={motionBlur}
+              onChange={(event) => setMotionBlur(Number(event.target.value))}
+            >
+              {MOTION_BLUR_OPTIONS.map((option) => (
+                <option key={option.samples} value={option.samples}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label {...stylex.props(ui.fieldSub)}>
             <span {...stylex.props(ui.label)}>画質</span>
             <select
               {...stylex.props(ui.input)}
@@ -664,7 +693,7 @@ export function App() {
         </div>
 
         <div {...stylex.props(styles.view, VIEW_STYLES[background])}>
-          <PreviewCanvas scene={scene} />
+          <PreviewCanvas scene={scene} motionBlurSamples={motionBlur} fps={fps} />
         </div>
 
         {result && (
