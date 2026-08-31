@@ -7,39 +7,39 @@
  * WebM の alpha side data として多重化してくれるので、ここではそれに任せている。
  */
 
-import { BufferTarget, CanvasSource, Output, WebMOutputFormat, canEncodeVideo } from "mediabunny";
+import { BufferTarget, CanvasSource, Output, WebMOutputFormat, canEncodeVideo } from 'mediabunny'
 
-import type { CardScene } from "../card/render.ts";
-import { renderFrame } from "../card/render.ts";
+import type { CardScene } from '../card/render.ts'
+import { renderFrame } from '../card/render.ts'
 
 /** 書き出しの設定。 */
 export interface ExportOptions {
-  scene: CardScene;
+  scene: CardScene
   /** フレームレート（fps）。 */
-  fps: number;
+  fps: number
   /** 目標ビットレート（bps）。 */
-  bitrate: number;
+  bitrate: number
   /** 進捗通知。0-1 の比率が渡る。 */
-  onProgress?: (ratio: number) => void;
+  onProgress?: (ratio: number) => void
   /** 中断用シグナル。 */
-  signal?: AbortSignal;
+  signal?: AbortSignal
 }
 
 /** 書き出し結果。 */
 export interface ExportResult {
-  blob: Blob;
+  blob: Blob
   /** 実際に書き出したフレーム数。 */
-  frameCount: number;
+  frameCount: number
   /** 書き出しにかかった時間（ミリ秒）。 */
-  elapsedMs: number;
+  elapsedMs: number
 }
 
 /** この環境で透過 WebM を書き出せるかどうか。 */
 export async function canExportTransparentWebm(): Promise<boolean> {
   try {
-    return await canEncodeVideo("vp9", { width: 640, height: 960 });
+    return await canEncodeVideo('vp9', { width: 640, height: 960 })
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -57,60 +57,60 @@ export async function canExportTransparentWebm(): Promise<boolean> {
  * const url = URL.createObjectURL(blob);
  */
 export async function exportWebm(options: ExportOptions): Promise<ExportResult> {
-  const { scene, fps, bitrate, onProgress, signal } = options;
-  const startedAt = performance.now();
+  const { scene, fps, bitrate, onProgress, signal } = options
+  const startedAt = performance.now()
 
-  const canvas = new OffscreenCanvas(scene.width, scene.height);
+  const canvas = new OffscreenCanvas(scene.width, scene.height)
   // 透過を保つため alpha を明示し、読み戻さないので willReadFrequently は付けない
-  const ctx = canvas.getContext("2d", { alpha: true });
-  if (!ctx) throw new Error("2D コンテキストを取得できませんでした");
+  const ctx = canvas.getContext('2d', { alpha: true })
+  if (!ctx) throw new Error('2D コンテキストを取得できませんでした')
 
   const output = new Output({
     format: new WebMOutputFormat(),
     target: new BufferTarget(),
-  });
+  })
 
   const source = new CanvasSource(canvas, {
-    codec: "vp9",
+    codec: 'vp9',
     bitrate,
     // これを付けないと色だけが焼かれて背景が黒く潰れる
-    alpha: "keep",
-  });
+    alpha: 'keep',
+  })
 
-  output.addVideoTrack(source, { frameRate: fps });
-  await output.start();
+  output.addVideoTrack(source, { frameRate: fps })
+  await output.start()
 
-  const frameCount = Math.max(1, Math.round(scene.duration * fps));
-  const frameDuration = 1 / fps;
+  const frameCount = Math.max(1, Math.round(scene.duration * fps))
+  const frameDuration = 1 / fps
 
   try {
     for (let index = 0; index < frameCount; index++) {
-      if (signal?.aborted) throw new Error("書き出しを中断しました");
+      if (signal?.aborted) throw new Error('書き出しを中断しました')
 
-      const time = index * frameDuration;
-      ctx.clearRect(0, 0, scene.width, scene.height);
-      renderFrame(ctx, time, scene);
-      await source.add(time, frameDuration);
+      const time = index * frameDuration
+      ctx.clearRect(0, 0, scene.width, scene.height)
+      renderFrame(ctx, time, scene)
+      await source.add(time, frameDuration)
 
-      onProgress?.((index + 1) / frameCount);
+      onProgress?.((index + 1) / frameCount)
 
       // エンコードは同期的に詰まるため、時々制御を返して UI の更新を通す
-      if (index % 5 === 4) await new Promise((resolve) => setTimeout(resolve, 0));
+      if (index % 5 === 4) await new Promise((resolve) => setTimeout(resolve, 0))
     }
 
-    await output.finalize();
+    await output.finalize()
   } catch (error) {
     // 途中で失敗しても、開いたままの Output がリソースを掴み続けないよう畳む
-    await output.cancel().catch(() => undefined);
-    throw error;
+    await output.cancel().catch(() => undefined)
+    throw error
   }
 
-  const buffer = output.target.buffer;
-  if (!buffer) throw new Error("書き出しに失敗しました（出力が空です）");
+  const buffer = output.target.buffer
+  if (!buffer) throw new Error('書き出しに失敗しました（出力が空です）')
 
   return {
-    blob: new Blob([buffer], { type: "video/webm" }),
+    blob: new Blob([buffer], { type: 'video/webm' }),
     frameCount,
     elapsedMs: performance.now() - startedAt,
-  };
+  }
 }

@@ -1,12 +1,12 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState } from 'react'
 
-import { toErrorMessage } from "../errors.ts";
-import type { Artwork } from "../types.ts";
+import { toErrorMessage } from '../errors.ts'
+import type { Artwork } from '../types.ts'
 
 interface ImageDropZoneProps {
-  artwork: Artwork | null;
-  onSelect: (artwork: Artwork) => void;
-  onError: (message: string) => void;
+  artwork: Artwork | null
+  onSelect: (artwork: Artwork) => void
+  onError: (message: string) => void
 }
 
 /**
@@ -14,48 +14,48 @@ interface ImageDropZoneProps {
  * 受け取った画像は `createImageBitmap` でデコードしてから親に渡す。
  */
 export function ImageDropZone({ artwork, onSelect, onError }: ImageDropZoneProps) {
-  const [isDragging, setIsDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(
     async (file: File) => {
-      if (!file.type.startsWith("image/")) {
-        onError(`画像ファイルではありません: ${file.name}`);
-        return;
+      if (!file.type.startsWith('image/')) {
+        onError(`画像ファイルではありません: ${file.name}`)
+        return
       }
       try {
         // デコードを先に済ませておくと、描画のたびに待たされない
-        const bitmap = await createImageBitmap(file);
+        const bitmap = await createImageBitmap(file)
         onSelect({
           bitmap,
           width: bitmap.width,
           height: bitmap.height,
-          fileName: file.name.replace(/\.[^.]+$/, ""),
-        });
+          fileName: file.name.replace(/\.[^.]+$/, ''),
+        })
       } catch (error) {
-        onError(`画像を読み込めませんでした: ${toErrorMessage(error)}`);
+        onError(`画像を読み込めませんでした: ${toErrorMessage(error)}`)
       }
     },
     [onSelect, onError],
-  );
+  )
 
   return (
     <div
-      className={`dropzone${isDragging ? " dropzone--active" : ""}`}
+      className={`dropzone${isDragging ? ' dropzone--active' : ''}`}
       onDragOver={(event) => {
-        event.preventDefault();
-        setIsDragging(true);
+        event.preventDefault()
+        setIsDragging(true)
       }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={(event) => {
-        event.preventDefault();
-        setIsDragging(false);
-        const file = event.dataTransfer.files[0];
-        if (file) void load(file);
+        event.preventDefault()
+        setIsDragging(false)
+        const file = event.dataTransfer.files[0]
+        if (file) void load(file)
       }}
       onClick={() => inputRef.current?.click()}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") inputRef.current?.click();
+        if (event.key === 'Enter' || event.key === ' ') inputRef.current?.click()
       }}
       role="button"
       tabIndex={0}
@@ -66,10 +66,10 @@ export function ImageDropZone({ artwork, onSelect, onError }: ImageDropZoneProps
         accept="image/*"
         hidden
         onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void load(file);
+          const file = event.target.files?.[0]
+          if (file) void load(file)
           // 同じファイルを選び直せるようにリセットする
-          event.target.value = "";
+          event.target.value = ''
         }}
       />
       {artwork ? (
@@ -88,5 +88,5 @@ export function ImageDropZone({ artwork, onSelect, onError }: ImageDropZoneProps
         </div>
       )}
     </div>
-  );
+  )
 }

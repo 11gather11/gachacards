@@ -6,62 +6,62 @@
  * 前回と同じカードを作り直せなくなるため、設定一式を保存している。
  */
 
-import type { IntroMode } from "./card/intro.ts";
-import type { RarityId } from "./card/rarity.ts";
-import type { Orientation } from "./types.ts";
+import type { IntroMode } from './card/intro.ts'
+import type { RarityId } from './card/rarity.ts'
+import type { Orientation } from './types.ts'
 
 /** 保存対象の設定。アートワークは容量が大きいので含めない。 */
 export interface Settings {
-  rarityId: RarityId;
+  rarityId: RarityId
   /**
    * カード左上のランク表記の上書き。
    * `null` ならレアリティごとの既定値、空文字ならバッジを出さない。
    */
-  badge: string | null;
-  title: string;
-  subtitle: string;
+  badge: string | null
+  title: string
+  subtitle: string
   /** 尺（秒）。 */
-  duration: number;
-  fps: number;
+  duration: number
+  fps: number
   /** カードが出る前の共通演出の出し方。 */
-  introMode: IntroMode;
+  introMode: IntroMode
   /** 入り演出の長さ（秒）。尺が短ければ自動で詰められる。 */
-  introSeconds: number;
+  introSeconds: number
   /** 白から目的の色に上がるまでに、途中で通す色。 */
-  via: RarityId[];
+  via: RarityId[]
   /** カードの向き。 */
-  orientation: Orientation;
+  orientation: Orientation
   /** {@link SIZE_PRESETS} の ID。 */
-  sizeId: string;
+  sizeId: string
   /** {@link QUALITY_PRESETS} の ID。 */
-  qualityId: string;
-  loop: boolean;
+  qualityId: string
+  loop: boolean
   /** パーティクル配置を決めるシード。 */
-  seed: number;
+  seed: number
 }
 
-const STORAGE_KEY = "card-alert-maker:settings";
+const STORAGE_KEY = 'card-alert-maker:settings'
 
 /** 何も保存されていないときに使う初期設定。 */
 export const DEFAULT_SETTINGS: Settings = {
-  rarityId: "gold",
+  rarityId: 'gold',
   badge: null,
-  title: "",
-  subtitle: "",
+  title: '',
+  subtitle: '',
   duration: 8,
   fps: 30,
-  introMode: "on",
+  introMode: 'on',
   // 長く溜めるとテンポが落ちるので、既定は短めに置く
   introSeconds: 2,
   // 既定は途中の色をすべて通る（1 段ずつ上がる）
-  via: ["blue", "green", "red", "gold"],
+  via: ['blue', 'green', 'red', 'gold'],
   // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする
-  orientation: "landscape",
-  sizeId: "md",
-  qualityId: "mid",
+  orientation: 'landscape',
+  sizeId: 'md',
+  qualityId: 'mid',
   loop: false,
   seed: 1,
-};
+}
 
 /**
  * 保存済みの設定を読み出す。壊れていたり読めない場合は既定値を返す。
@@ -71,21 +71,21 @@ export const DEFAULT_SETTINGS: Settings = {
  */
 export function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS };
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return { ...DEFAULT_SETTINGS }
     // JSON.parse は any を返す。そのまま Settings とみなすと、壊れた保存値が
     // 型の裏をすり抜けてしまうので、まず object かどうかだけ確かめる
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return { ...DEFAULT_SETTINGS };
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null) return { ...DEFAULT_SETTINGS }
 
     // 以前は "none" / "promote" / "fake" を保存していた。
     // 演出の種類は無くなったので、出すか出さないかだけを引き継ぐ
-    const introMode: IntroMode = "introMode" in parsed && parsed.introMode === "off" ? "off" : "on";
+    const introMode: IntroMode = 'introMode' in parsed && parsed.introMode === 'off' ? 'off' : 'on'
 
     // 保存後にキーが増えても壊れないよう、既定値の上に読めた分だけ重ねる
-    return { ...DEFAULT_SETTINGS, ...parsed, introMode };
+    return { ...DEFAULT_SETTINGS, ...parsed, introMode }
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS }
   }
 }
 
@@ -96,7 +96,7 @@ export function loadSettings(): Settings {
  */
 export function saveSettings(settings: Settings): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
   } catch {
     // 保存できなくてもアプリの動作自体は続けられるので握りつぶす
   }
@@ -108,5 +108,5 @@ export function saveSettings(settings: Settings): void {
  * @returns 0 以上 100000 未満の整数
  */
 export function drawSeed(): number {
-  return Math.floor(Math.random() * 100_000);
+  return Math.floor(Math.random() * 100_000)
 }

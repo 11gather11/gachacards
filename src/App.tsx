@@ -1,82 +1,82 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { ImageDropZone } from "./components/ImageDropZone.tsx";
-import { PreviewCanvas } from "./components/PreviewCanvas.tsx";
-import { RarityPicker } from "./components/RarityPicker.tsx";
-import type { IntroMode } from "./card/intro.ts";
+import type { IntroMode } from './card/intro.ts'
 import {
   buildIntroStages,
   computeIntroDuration,
   createIntroParticles,
   listIntermediateRarities,
-} from "./card/intro.ts";
-import { createParticles } from "./card/particles.ts";
-import type { RarityId } from "./card/rarity.ts";
-import { getRarity } from "./card/rarity.ts";
-import type { CardScene } from "./card/render.ts";
-import { computeCardSize, computeTimeline } from "./card/render.ts";
-import { canExportTransparentWebm, exportWebm } from "./export/webm.ts";
-import { toErrorMessage } from "./errors.ts";
-import { drawSeed, loadSettings, saveSettings } from "./settings.ts";
-import type { Artwork, Orientation } from "./types.ts";
-import { QUALITY_PRESETS, SIZE_PRESETS, isOrientation, resolveFrameSize } from "./types.ts";
+} from './card/intro.ts'
+import { createParticles } from './card/particles.ts'
+import type { RarityId } from './card/rarity.ts'
+import { getRarity } from './card/rarity.ts'
+import type { CardScene } from './card/render.ts'
+import { computeCardSize, computeTimeline } from './card/render.ts'
+import { ImageDropZone } from './components/ImageDropZone.tsx'
+import { PreviewCanvas } from './components/PreviewCanvas.tsx'
+import { RarityPicker } from './components/RarityPicker.tsx'
+import { toErrorMessage } from './errors.ts'
+import { canExportTransparentWebm, exportWebm } from './export/webm.ts'
+import { drawSeed, loadSettings, saveSettings } from './settings.ts'
+import type { Artwork, Orientation } from './types.ts'
+import { QUALITY_PRESETS, SIZE_PRESETS, isOrientation, resolveFrameSize } from './types.ts'
 
 /** プレビューの下に敷く背景。透過の確認用に切り替える。 */
-type PreviewBackground = "checker" | "dark" | "light" | "stream";
+type PreviewBackground = 'checker' | 'dark' | 'light' | 'stream'
 
 /** 書き出し済みのファイル。保存を押すまではメモリ上に置いておく。 */
 interface ExportedFile {
-  blob: Blob;
+  blob: Blob
   /** プレビュー再生用のオブジェクト URL。 */
-  url: string;
-  fileName: string;
+  url: string
+  fileName: string
   /** サイズやフレーム数をまとめた表示用の文字列。 */
-  summary: string;
+  summary: string
 }
 
-const FPS_OPTIONS = [24, 30, 60] as const;
+const FPS_OPTIONS = [24, 30, 60] as const
 
 /** 前回の設定。アプリ起動時に一度だけ読む。 */
-const INITIAL = loadSettings();
+const INITIAL = loadSettings()
 
 /** Blob をファイルとして保存させる。 */
 function downloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = fileName
+  anchor.click()
   // クリック直後に revoke すると保存が始まらない環境があるため、一拍置いてから解放する
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 export function App() {
-  const [artwork, setArtwork] = useState<Artwork | null>(null);
-  const [rarityId, setRarityId] = useState<RarityId>(INITIAL.rarityId);
-  const [badge, setBadge] = useState<string | null>(INITIAL.badge);
-  const [title, setTitle] = useState(INITIAL.title);
-  const [subtitle, setSubtitle] = useState(INITIAL.subtitle);
-  const [duration, setDuration] = useState(INITIAL.duration);
-  const [fps, setFps] = useState<number>(INITIAL.fps);
-  const [introMode, setIntroMode] = useState<IntroMode>(INITIAL.introMode);
-  const [introSeconds, setIntroSeconds] = useState(INITIAL.introSeconds);
-  const [via, setVia] = useState<RarityId[]>(INITIAL.via);
-  const [orientation, setOrientation] = useState<Orientation>(INITIAL.orientation);
-  const [sizeId, setSizeId] = useState(INITIAL.sizeId);
-  const [qualityId, setQualityId] = useState(INITIAL.qualityId);
-  const [loop, setLoop] = useState(INITIAL.loop);
-  const [seed, setSeed] = useState(INITIAL.seed);
-  const [background, setBackground] = useState<PreviewBackground>("checker");
+  const [artwork, setArtwork] = useState<Artwork | null>(null)
+  const [rarityId, setRarityId] = useState<RarityId>(INITIAL.rarityId)
+  const [badge, setBadge] = useState<string | null>(INITIAL.badge)
+  const [title, setTitle] = useState(INITIAL.title)
+  const [subtitle, setSubtitle] = useState(INITIAL.subtitle)
+  const [duration, setDuration] = useState(INITIAL.duration)
+  const [fps, setFps] = useState<number>(INITIAL.fps)
+  const [introMode, setIntroMode] = useState<IntroMode>(INITIAL.introMode)
+  const [introSeconds, setIntroSeconds] = useState(INITIAL.introSeconds)
+  const [via, setVia] = useState<RarityId[]>(INITIAL.via)
+  const [orientation, setOrientation] = useState<Orientation>(INITIAL.orientation)
+  const [sizeId, setSizeId] = useState(INITIAL.sizeId)
+  const [qualityId, setQualityId] = useState(INITIAL.qualityId)
+  const [loop, setLoop] = useState(INITIAL.loop)
+  const [seed, setSeed] = useState(INITIAL.seed)
+  const [background, setBackground] = useState<PreviewBackground>('checker')
 
-  const [progress, setProgress] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ExportedFile | null>(null);
-  const [isSupported, setIsSupported] = useState<boolean | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [progress, setProgress] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<ExportedFile | null>(null)
+  const [isSupported, setIsSupported] = useState<boolean | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    void canExportTransparentWebm().then(setIsSupported);
-  }, []);
+    void canExportTransparentWebm().then(setIsSupported)
+  }, [])
 
   // 別の日に同じカードを作り直せるよう、seed を含めた設定を残しておく
   useEffect(() => {
@@ -95,7 +95,7 @@ export function App() {
       qualityId,
       loop,
       seed,
-    });
+    })
   }, [
     rarityId,
     badge,
@@ -111,42 +111,42 @@ export function App() {
     qualityId,
     loop,
     seed,
-  ]);
+  ])
 
   // 書き出し結果の URL は差し替えのたびに解放する
   useEffect(() => {
-    const url = result?.url;
+    const url = result?.url
     return () => {
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [result]);
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [result])
 
-  const sizePreset = SIZE_PRESETS.find((preset) => preset.id === sizeId) ?? SIZE_PRESETS[1]!;
+  const sizePreset = SIZE_PRESETS.find((preset) => preset.id === sizeId) ?? SIZE_PRESETS[1]!
   // 毎レンダリングで新しい物体になると scene の再計算が止まらないので、ここで固定する
-  const size = useMemo(() => resolveFrameSize(sizePreset, orientation), [sizePreset, orientation]);
-  const quality = QUALITY_PRESETS.find((preset) => preset.id === qualityId) ?? QUALITY_PRESETS[1]!;
-  const rarity = getRarity(rarityId);
+  const size = useMemo(() => resolveFrameSize(sizePreset, orientation), [sizePreset, orientation])
+  const quality = QUALITY_PRESETS.find((preset) => preset.id === qualityId) ?? QUALITY_PRESETS[1]!
+  const rarity = getRarity(rarityId)
   // null は「上書きしていない」の意味なので、レアリティ側の既定値に落とす
-  const effectiveBadge = badge ?? rarity.badge;
+  const effectiveBadge = badge ?? rarity.badge
   // 長さはレアリティによらず一定。変わるのは同じ時間に何段上がるか
-  const introDuration = computeIntroDuration(introSeconds, duration, introMode === "on");
+  const introDuration = computeIntroDuration(introSeconds, duration, introMode === 'on')
   // 尺を伸ばすとファイルがどれだけ膨らむかを、書き出す前に見せる
-  const estimatedSizeMb = (quality.bitrate * duration) / 8 / 1024 / 1024;
+  const estimatedSizeMb = (quality.bitrate * duration) / 8 / 1024 / 1024
   // 段取りは表示にも使うので、シーンと同じものをここで組み立てて共有する
-  const introStages = useMemo(() => buildIntroStages(rarity, via), [rarity, via]);
+  const introStages = useMemo(() => buildIntroStages(rarity, via), [rarity, via])
   // 白と目的の色は必ず通るので、選べるのはその間の色だけ
-  const intermediates = listIntermediateRarities(rarity);
+  const intermediates = listIntermediateRarities(rarity)
 
   const scene = useMemo<CardScene>(() => {
-    const card = computeCardSize(size.width, size.height);
-    const timeline = computeTimeline(duration, loop, introDuration);
+    const card = computeCardSize(size.width, size.height)
+    const timeline = computeTimeline(duration, loop, introDuration)
     const intro =
-      introMode === "off"
+      introMode === 'off'
         ? null
         : {
             stages: introStages,
             particles: createIntroParticles(130, seed),
-          };
+          }
     const particles = createParticles(
       rarity,
       {
@@ -157,7 +157,7 @@ export function App() {
         startAt: timeline.entranceEnd,
       },
       seed,
-    );
+    )
 
     return {
       width: size.width,
@@ -174,7 +174,7 @@ export function App() {
       intro,
       introDuration,
       loop,
-    };
+    }
   }, [
     size,
     rarity,
@@ -188,13 +188,13 @@ export function App() {
     introStages,
     loop,
     seed,
-  ]);
+  ])
 
   const handleExport = async () => {
-    setError(null);
-    setProgress(0);
-    const controller = new AbortController();
-    abortRef.current = controller;
+    setError(null)
+    setProgress(0)
+    const controller = new AbortController()
+    abortRef.current = controller
 
     try {
       const exported = await exportWebm({
@@ -203,25 +203,25 @@ export function App() {
         bitrate: quality.bitrate,
         signal: controller.signal,
         onProgress: setProgress,
-      });
+      })
 
       // 自動で保存はしない。何本も試して気に入ったものだけ残せるようにする
       setResult({
         blob: exported.blob,
         url: URL.createObjectURL(exported.blob),
         // 出来上がったファイルから seed を辿れるよう、名前に焼き込む
-        fileName: `${artwork?.fileName ?? "card"}-${rarityId}-s${seed}.webm`,
+        fileName: `${artwork?.fileName ?? 'card'}-${rarityId}-s${seed}.webm`,
         summary: `${(exported.blob.size / 1024 / 1024).toFixed(2)} MB / ${exported.frameCount} フレーム / ${(exported.elapsedMs / 1000).toFixed(1)} 秒`,
-      });
+      })
     } catch (caught) {
-      setError(toErrorMessage(caught));
+      setError(toErrorMessage(caught))
     } finally {
-      setProgress(null);
-      abortRef.current = null;
+      setProgress(null)
+      abortRef.current = null
     }
-  };
+  }
 
-  const isExporting = progress !== null;
+  const isExporting = progress !== null
 
   return (
     <div className="app">
@@ -306,12 +306,12 @@ export function App() {
           <label className="checkbox">
             <input
               type="checkbox"
-              checked={introMode === "on"}
-              onChange={(event) => setIntroMode(event.target.checked ? "on" : "off")}
+              checked={introMode === 'on'}
+              onChange={(event) => setIntroMode(event.target.checked ? 'on' : 'off')}
             />
             入りの演出（光が集まって弾ける）
           </label>
-          {introMode === "on" && (
+          {introMode === 'on' && (
             <>
               <label className="field__label" htmlFor="introSeconds">
                 入りの長さ: {introSeconds.toFixed(1)} 秒
@@ -365,8 +365,8 @@ export function App() {
                 </>
               )}
               <p className="notice">
-                {introStages.map((stage) => stage.rarity.label).join(" → ")}
-                {" / "}
+                {introStages.map((stage) => stage.rarity.label).join(' → ')}
+                {' / '}
                 {introDuration.toFixed(2)} 秒
               </p>
             </>
@@ -380,7 +380,7 @@ export function App() {
               className="input"
               value={orientation}
               onChange={(event) => {
-                if (isOrientation(event.target.value)) setOrientation(event.target.value);
+                if (isOrientation(event.target.value)) setOrientation(event.target.value)
               }}
             >
               <option value="landscape">横長</option>
@@ -395,12 +395,12 @@ export function App() {
               onChange={(event) => setSizeId(event.target.value)}
             >
               {SIZE_PRESETS.map((preset) => {
-                const frame = resolveFrameSize(preset, orientation);
+                const frame = resolveFrameSize(preset, orientation)
                 return (
                   <option key={preset.id} value={preset.id}>
                     {preset.label} ({frame.width}×{frame.height})
                   </option>
-                );
+                )
               })}
             </select>
           </label>
@@ -483,7 +483,7 @@ export function App() {
           >
             {isExporting
               ? `書き出し中 ${Math.round((progress ?? 0) * 100)}%`
-              : "透過 WebM を書き出す"}
+              : '透過 WebM を書き出す'}
           </button>
           {isExporting && (
             <button type="button" className="button" onClick={() => abortRef.current?.abort()}>
@@ -502,17 +502,17 @@ export function App() {
       <main className="stage">
         <div className="stage__toolbar">
           <span className="field__label">プレビュー背景</span>
-          {(["checker", "dark", "light", "stream"] as const).map((value) => (
+          {(['checker', 'dark', 'light', 'stream'] as const).map((value) => (
             <button
               key={value}
               type="button"
-              className={`chip${background === value ? " chip--active" : ""}`}
+              className={`chip${background === value ? ' chip--active' : ''}`}
               onClick={() => setBackground(value)}
             >
-              {value === "checker" && "市松"}
-              {value === "dark" && "暗い"}
-              {value === "light" && "明るい"}
-              {value === "stream" && "配信風"}
+              {value === 'checker' && '市松'}
+              {value === 'dark' && '暗い'}
+              {value === 'light' && '明るい'}
+              {value === 'stream' && '配信風'}
             </button>
           ))}
         </div>
@@ -540,5 +540,5 @@ export function App() {
         )}
       </main>
     </div>
-  );
+  )
 }

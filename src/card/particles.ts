@@ -6,65 +6,65 @@
  * パラメトリック方式にしている。おかげでプレビューのシークと書き出しが常に一致する。
  */
 
-import type { RarityPreset } from "./rarity.ts";
-import { createRng, randomBetween, randomPick } from "./math.ts";
+import { createRng, randomBetween, randomPick } from './math.ts'
+import type { RarityPreset } from './rarity.ts'
 
 /** 粒の描画形状。 */
-export type ParticleShape = "circle" | "star" | "shard";
+export type ParticleShape = 'circle' | 'star' | 'shard'
 
 /** 1 粒分の、時間に依存しないパラメータ。 */
 export interface Particle {
   /** 出現時刻（秒）。 */
-  birth: number;
+  birth: number
   /** 出現から消滅までの長さ（秒）。 */
-  life: number;
+  life: number
   /** 出現位置 X（カード中心を原点とした px）。 */
-  x0: number;
+  x0: number
   /** 出現位置 Y（カード中心を原点とした px）。 */
-  y0: number;
+  y0: number
   /** 初速 X（px/秒）。 */
-  vx: number;
+  vx: number
   /** 初速 Y（px/秒、上方向が負）。 */
-  vy: number;
+  vy: number
   /** 落下加速度（px/秒²）。負なら上に吸い上げられる。 */
-  gravity: number;
+  gravity: number
   /** 基準サイズ（px）。 */
-  size: number;
-  color: string;
-  shape: ParticleShape;
+  size: number
+  color: string
+  shape: ParticleShape
   /** 回転速度（ラジアン/秒）。 */
-  spin: number;
+  spin: number
   /** 横揺れの振幅（px）。 */
-  swayAmplitude: number;
+  swayAmplitude: number
   /** 横揺れの周波数（ラジアン/秒）。 */
-  swayFrequency: number;
+  swayFrequency: number
   /** 横揺れの位相オフセット（ラジアン）。 */
-  swayPhase: number;
+  swayPhase: number
 }
 
 /** ある時刻における粒の描画状態。 */
 export interface ParticleState {
-  x: number;
-  y: number;
-  size: number;
+  x: number
+  y: number
+  size: number
   /** 不透明度 0-1。 */
-  alpha: number;
+  alpha: number
   /** 回転角（ラジアン）。 */
-  rotation: number;
-  color: string;
-  shape: ParticleShape;
+  rotation: number
+  color: string
+  shape: ParticleShape
 }
 
 /** パーティクル生成に必要なカードの寸法情報。 */
 export interface ParticleField {
   /** カードの幅（px）。 */
-  cardWidth: number;
+  cardWidth: number
   /** カードの高さ（px）。 */
-  cardHeight: number;
+  cardHeight: number
   /** アニメーション全体の尺（秒）。 */
-  duration: number;
+  duration: number
   /** 演出が始まる時刻（秒）。登場アニメの着地に合わせる。 */
-  startAt: number;
+  startAt: number
 }
 
 /**
@@ -85,29 +85,29 @@ export function createParticles(
   field: ParticleField,
   seed: number,
 ): Particle[] {
-  const { kind, count, colors } = preset.particle;
-  if (kind === "none" || count === 0) return [];
+  const { kind, count, colors } = preset.particle
+  if (kind === 'none' || count === 0) return []
 
-  const rng = createRng(seed);
-  const { cardWidth: w, cardHeight: h, duration, startAt } = field;
+  const rng = createRng(seed)
+  const { cardWidth: w, cardHeight: h, duration, startAt } = field
   // 粒が消えきる前に動画が終わらないよう、生成のリミットを尺から逆算する
-  const spawnWindow = Math.max(0.1, duration - startAt);
+  const spawnWindow = Math.max(0.1, duration - startAt)
   // 粒の大きさは短辺、飛ぶ速さはカード全体の大きさに合わせる。
   // どちらも幅だけを基準にすると、横向きのカードで粒が肥大化して飛び方も変わる
-  const unit = Math.min(w, h);
-  const span = (w + h) / 2;
-  const particles: Particle[] = [];
+  const unit = Math.min(w, h)
+  const span = (w + h) / 2
+  const particles: Particle[] = []
 
   for (let i = 0; i < count; i++) {
     const shared = {
       color: randomPick(rng, colors),
       spin: randomBetween(rng, -4, 4),
       swayPhase: randomBetween(rng, 0, Math.PI * 2),
-    };
+    }
 
-    if (kind === "dust") {
+    if (kind === 'dust') {
       // 下端の少し外側から湧かせ、寿命いっぱいかけて上へ抜けさせる
-      const life = randomBetween(rng, 1.1, 2.2);
+      const life = randomBetween(rng, 1.1, 2.2)
       particles.push({
         ...shared,
         birth: startAt + randomBetween(rng, 0, spawnWindow),
@@ -118,18 +118,18 @@ export function createParticles(
         vy: randomBetween(rng, -span * 0.42, -span * 0.18),
         gravity: randomBetween(rng, -6, 6),
         size: randomBetween(rng, unit * 0.006, unit * 0.018),
-        shape: rng() < 0.25 ? "star" : "circle",
+        shape: rng() < 0.25 ? 'star' : 'circle',
         swayAmplitude: randomBetween(rng, unit * 0.01, unit * 0.05),
         swayFrequency: randomBetween(rng, 1.2, 3.4),
-      });
-      continue;
+      })
+      continue
     }
 
-    if (kind === "spark") {
+    if (kind === 'spark') {
       // カード面のどこかから四方へ飛ばす。半分は登場直後に集中させて「弾けた」感を出す
-      const angle = randomBetween(rng, 0, Math.PI * 2);
-      const speed = randomBetween(rng, span * 0.3, span * 0.85);
-      const early = i < count * 0.5;
+      const angle = randomBetween(rng, 0, Math.PI * 2)
+      const speed = randomBetween(rng, span * 0.3, span * 0.85)
+      const early = i < count * 0.5
       particles.push({
         ...shared,
         birth: startAt + (early ? randomBetween(rng, 0, 0.25) : randomBetween(rng, 0, spawnWindow)),
@@ -140,18 +140,18 @@ export function createParticles(
         vy: Math.sin(angle) * speed,
         gravity: randomBetween(rng, span * 0.25, span * 0.6),
         size: randomBetween(rng, unit * 0.005, unit * 0.016),
-        shape: rng() < 0.4 ? "shard" : "circle",
+        shape: rng() < 0.4 ? 'shard' : 'circle',
         swayAmplitude: 0,
         swayFrequency: 0,
-      });
-      continue;
+      })
+      continue
     }
 
     // burst: 7 割は着地の瞬間に中心から放射状へ、残りは漂う残り火にする
-    const isBlast = i < count * 0.7;
-    const angle = randomBetween(rng, 0, Math.PI * 2);
+    const isBlast = i < count * 0.7
+    const angle = randomBetween(rng, 0, Math.PI * 2)
     if (isBlast) {
-      const speed = randomBetween(rng, span * 0.55, span * 1.5);
+      const speed = randomBetween(rng, span * 0.55, span * 1.5)
       particles.push({
         ...shared,
         birth: startAt + randomBetween(rng, 0, 0.12),
@@ -162,10 +162,10 @@ export function createParticles(
         vy: Math.sin(angle) * speed,
         gravity: randomBetween(rng, span * 0.1, span * 0.4),
         size: randomBetween(rng, unit * 0.006, unit * 0.02),
-        shape: rng() < 0.5 ? "star" : "shard",
+        shape: rng() < 0.5 ? 'star' : 'shard',
         swayAmplitude: 0,
         swayFrequency: 0,
-      });
+      })
     } else {
       particles.push({
         ...shared,
@@ -177,14 +177,14 @@ export function createParticles(
         vy: randomBetween(rng, -span * 0.36, -span * 0.14),
         gravity: -4,
         size: randomBetween(rng, unit * 0.006, unit * 0.016),
-        shape: "circle",
+        shape: 'circle',
         swayAmplitude: randomBetween(rng, unit * 0.015, unit * 0.06),
         swayFrequency: randomBetween(rng, 1, 3),
-      });
+      })
     }
   }
 
-  return particles;
+  return particles
 }
 
 /**
@@ -195,15 +195,15 @@ export function createParticles(
  * @returns 描画状態、または表示対象外を示す `null`
  */
 export function particleStateAt(particle: Particle, time: number): ParticleState | null {
-  const age = time - particle.birth;
-  if (age < 0 || age > particle.life) return null;
+  const age = time - particle.birth
+  if (age < 0 || age > particle.life) return null
 
   // 寿命内での進み具合。フェードとサイズはこれを基準に決める
-  const t = age / particle.life;
+  const t = age / particle.life
   const sway =
     particle.swayAmplitude === 0
       ? 0
-      : Math.sin(age * particle.swayFrequency + particle.swayPhase) * particle.swayAmplitude;
+      : Math.sin(age * particle.swayFrequency + particle.swayPhase) * particle.swayAmplitude
 
   return {
     // 等加速度運動に横揺れを重ねた位置
@@ -216,5 +216,5 @@ export function particleStateAt(particle: Particle, time: number): ParticleState
     rotation: particle.spin * age,
     color: particle.color,
     shape: particle.shape,
-  };
+  }
 }

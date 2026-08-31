@@ -9,48 +9,48 @@
  * 途中でどの色を通すかも、演出全体の長さも、呼び出し側から指定する。
  */
 
-import { createRng, easeOutCubic, progress, pulse, randomBetween } from "./math.ts";
-import type { RarityId, RarityPreset } from "./rarity.ts";
-import { RARITY_PRESETS } from "./rarity.ts";
-import type { Canvas2dContext } from "./render.ts";
+import { createRng, easeOutCubic, progress, pulse, randomBetween } from './math.ts'
+import type { RarityId, RarityPreset } from './rarity.ts'
+import { RARITY_PRESETS } from './rarity.ts'
+import type { Canvas2dContext } from './render.ts'
 
 /** UI から選ぶ入り演出の設定。`"off"` なら演出そのものを出さない。 */
-export type IntroMode = "off" | "on";
+export type IntroMode = 'off' | 'on'
 
 /** 光の色が切り替わる 1 段階。 */
 export interface IntroStage {
   /** 入り演出を 0-1 に正規化した時刻。この時刻からこの色になる。 */
-  at: number;
-  rarity: RarityPreset;
+  at: number
+  rarity: RarityPreset
 }
 
 /** 中心へ吸い込まれていく光の粒。位置は時刻から直接求める。 */
 export interface IntroParticle {
   /** 出現する方角（ラジアン）。 */
-  angle: number;
+  angle: number
   /** 出現時の中心からの距離。フレーム短辺に対する比率。 */
-  startRadius: number;
+  startRadius: number
   /**
    * 出現時刻。入り演出の長さに対する比率（0-1）で持つ。
    * 演出が長いレアリティでは、そのぶん粒が長く湧き続ける。
    */
-  delay: number;
+  delay: number
   /**
    * 中心に届くまでの秒数。
    * 比率ではなく実時間で持つことで、演出の長さが変わっても吸い込む速さは変わらない。
    */
-  travelSeconds: number;
+  travelSeconds: number
   /** 粒の大きさ。フレーム短辺に対する比率。 */
-  size: number;
+  size: number
   /** 吸い込まれる間に回り込む角度（ラジアン）。 */
-  swirl: number;
+  swirl: number
 }
 
 /** 入り演出を描くのに必要な一式。 */
 export interface IntroConfig {
   /** 色の段取り。`at` の昇順。 */
-  stages: readonly IntroStage[];
-  particles: readonly IntroParticle[];
+  stages: readonly IntroStage[]
+  particles: readonly IntroParticle[]
 }
 
 /**
@@ -60,7 +60,7 @@ function countPromotions(target: RarityPreset): number {
   return Math.max(
     0,
     RARITY_PRESETS.findIndex((preset) => preset.id === target.id),
-  );
+  )
 }
 
 /**
@@ -80,9 +80,9 @@ function countPromotions(target: RarityPreset): number {
  * computeIntroDuration(4, 5, true); // => 3（尺が短いので詰められる）
  */
 export function computeIntroDuration(wanted: number, duration: number, enabled: boolean): number {
-  if (!enabled) return 0;
+  if (!enabled) return 0
   // 尺の 6 割を超えて前振りに使うとカードを見せる時間が残らないので頭打ちにする
-  return Math.min(wanted, duration * 0.6);
+  return Math.min(wanted, duration * 0.6)
 }
 
 /**
@@ -94,7 +94,7 @@ export function computeIntroDuration(wanted: number, duration: number, enabled: 
  * @returns 間に挟める色のプリセット。白と、白の 1 段上が目的の場合は空配列
  */
 export function listIntermediateRarities(target: RarityPreset): RarityPreset[] {
-  return RARITY_PRESETS.slice(1, countPromotions(target));
+  return RARITY_PRESETS.slice(1, countPromotions(target))
 }
 
 /**
@@ -113,19 +113,19 @@ export function listIntermediateRarities(target: RarityPreset): RarityPreset[] {
  * buildIntroStages(getRarity("rainbow"), []);                               // 白→虹
  */
 export function buildIntroStages(target: RarityPreset, via: readonly RarityId[]): IntroStage[] {
-  if (countPromotions(target) === 0) return [{ at: 0, rarity: target }];
+  if (countPromotions(target) === 0) return [{ at: 0, rarity: target }]
 
   // 白と目的の色は必ず通る。間の色は指定されたものだけを、信頼度の低い順に挟む
-  const middle = listIntermediateRarities(target).filter((preset) => via.includes(preset.id));
-  const path = [RARITY_PRESETS[0]!, ...middle, target];
+  const middle = listIntermediateRarities(target).filter((preset) => via.includes(preset.id))
+  const path = [RARITY_PRESETS[0]!, ...middle, target]
 
-  const hops = path.length - 1;
+  const hops = path.length - 1
   return path.map((rarity, index) => ({
     // 白をひと呼吸見せてから上げ始め、最後の色は弾ける前に必ず出しておく。
     // 通る色が減っても着地の時刻は動かないので、溜めの長さが一定になる
     at: index === 0 ? 0 : 0.2 + (0.55 * index) / hops,
     rarity,
-  }));
+  }))
 }
 
 /**
@@ -137,8 +137,8 @@ export function buildIntroStages(target: RarityPreset, via: readonly RarityId[])
  * @param seed - 乱数シード
  */
 export function createIntroParticles(count: number, seed: number): IntroParticle[] {
-  const rng = createRng(seed ^ 0xfade);
-  const particles: IntroParticle[] = [];
+  const rng = createRng(seed ^ 0xfade)
+  const particles: IntroParticle[] = []
 
   for (let i = 0; i < count; i++) {
     particles.push({
@@ -150,10 +150,10 @@ export function createIntroParticles(count: number, seed: number): IntroParticle
       travelSeconds: randomBetween(rng, 0.22, 0.45),
       size: randomBetween(rng, 0.004, 0.012),
       swirl: randomBetween(rng, -1.2, 1.2),
-    });
+    })
   }
 
-  return particles;
+  return particles
 }
 
 /**
@@ -163,15 +163,15 @@ export function createIntroParticles(count: number, seed: number): IntroParticle
  * @param p - 入り演出内の正規化時刻（0-1）
  */
 export function currentStage(stages: readonly IntroStage[], p: number): IntroStage {
-  let current = stages[0]!;
+  let current = stages[0]!
   for (const stage of stages) {
-    if (p >= stage.at) current = stage;
+    if (p >= stage.at) current = stage
   }
-  return current;
+  return current
 }
 
 /** 昇格の合図を見せる長さ（秒）。演出の長さによらず一定にする。 */
-const PROMOTION_FLASH_SECONDS = 0.14;
+const PROMOTION_FLASH_SECONDS = 0.14
 
 /**
  * 直前の色替わりからどれだけ経ったかを 0-1 で返す。1 なら十分時間が経っている。
@@ -184,20 +184,20 @@ function sinceStageChange(
   time: number,
   introDuration: number,
 ): number {
-  let last = 0;
+  let last = 0
   for (const stage of stages) {
-    if (time >= stage.at * introDuration) last = stage.at;
+    if (time >= stage.at * introDuration) last = stage.at
   }
-  if (last === 0) return 1;
+  if (last === 0) return 1
 
-  const changedAt = last * introDuration;
-  return progress(time, changedAt, changedAt + PROMOTION_FLASH_SECONDS);
+  const changedAt = last * introDuration
+  return progress(time, changedAt, changedAt + PROMOTION_FLASH_SECONDS)
 }
 
 /** 入り演出の描画に必要なフレームの寸法。 */
 interface IntroFrame {
-  width: number;
-  height: number;
+  width: number
+  height: number
 }
 
 /**
@@ -211,14 +211,14 @@ interface IntroFrame {
  * @returns 光の主色と、放射光に使う濃いめの色
  */
 function stageColors(stage: IntroStage, p: number): { color: string; accent: string } {
-  const { rarity } = stage;
+  const { rarity } = stage
   if (!rarity.rainbowFrame) {
-    return { color: rarity.glowColor, accent: rarity.frameColors[1] ?? rarity.glowColor };
+    return { color: rarity.glowColor, accent: rarity.frameColors[1] ?? rarity.glowColor }
   }
 
-  const colors = rarity.frameColors;
-  const index = Math.floor(p * 40) % colors.length;
-  return { color: colors[index]!, accent: colors[(index + 2) % colors.length]! };
+  const colors = rarity.frameColors
+  const index = Math.floor(p * 40) % colors.length
+  return { color: colors[index]!, accent: colors[(index + 2) % colors.length]! }
 }
 
 /**
@@ -240,19 +240,19 @@ function drawSoftRing(
   color: string,
   alpha: number,
 ): void {
-  if (radius <= 0 || alpha <= 0 || thickness <= 0) return;
+  if (radius <= 0 || alpha <= 0 || thickness <= 0) return
 
-  const outer = radius + thickness;
-  const gradient = ctx.createRadialGradient(0, 0, Math.max(0, radius - thickness), 0, 0, outer);
-  gradient.addColorStop(0, "rgba(0,0,0,0)");
-  gradient.addColorStop(0.5, color);
-  gradient.addColorStop(1, "rgba(0,0,0,0)");
+  const outer = radius + thickness
+  const gradient = ctx.createRadialGradient(0, 0, Math.max(0, radius - thickness), 0, 0, outer)
+  gradient.addColorStop(0, 'rgba(0,0,0,0)')
+  gradient.addColorStop(0.5, color)
+  gradient.addColorStop(1, 'rgba(0,0,0,0)')
 
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = gradient;
-  ctx.beginPath();
-  ctx.arc(0, 0, outer, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.globalAlpha = alpha
+  ctx.fillStyle = gradient
+  ctx.beginPath()
+  ctx.arc(0, 0, outer, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 /**
@@ -275,133 +275,133 @@ export function drawIntro(
   introDuration: number,
   time: number,
 ): void {
-  const p = progress(time, 0, introDuration);
-  if (p <= 0 || p >= 1) return;
+  const p = progress(time, 0, introDuration)
+  if (p <= 0 || p >= 1) return
 
-  const stage = currentStage(intro.stages, p);
-  const { color, accent } = stageColors(stage, p);
-  const unit = Math.min(frame.width, frame.height);
+  const stage = currentStage(intro.stages, p)
+  const { color, accent } = stageColors(stage, p)
+  const unit = Math.min(frame.width, frame.height)
   // ここを超えるとフレーム端で光が切られる
-  const maxRadius = unit * 0.46;
+  const maxRadius = unit * 0.46
 
   // 溜めと弾けを分ける。弾けはカードの登場に重なる。
   // 弾ける速さは演出の長さによらず一定にしたいので、秒で切り出す
-  const burstSeconds = Math.min(0.18, introDuration * 0.35);
-  const burstStart = introDuration - burstSeconds;
+  const burstSeconds = Math.min(0.18, introDuration * 0.35)
+  const burstStart = introDuration - burstSeconds
   // 光の立ち上がりも実時間で決める。演出全体の進行に紐づけると、
   // 尺の長い上位レアリティほど光り始めがゆっくりになってしまう
-  const grow = progress(time, 0, Math.min(0.5, burstStart));
+  const grow = progress(time, 0, Math.min(0.5, burstStart))
   // 段が上がるごとに一段強く光る。上位らしさは「長さ」と「強さ」で出し、
   // 動きの速さはどのレアリティでも変えない
-  const stageBoost = 1 + Math.max(0, intro.stages.indexOf(stage)) * 0.12;
-  const burst = progress(time, burstStart, introDuration);
+  const stageBoost = 1 + Math.max(0, intro.stages.indexOf(stage)) * 0.12
+  const burst = progress(time, burstStart, introDuration)
   // 色が変わった直後だけ 1 に近づく。昇格の見せ場に使う
-  const promotion = 1 - sinceStageChange(intro.stages, time, introDuration);
+  const promotion = 1 - sinceStageChange(intro.stages, time, introDuration)
 
-  ctx.save();
-  ctx.translate(frame.width / 2, frame.height / 2);
+  ctx.save()
+  ctx.translate(frame.width / 2, frame.height / 2)
   // 光の重なりを素直に足し合わせる
-  ctx.globalCompositeOperation = "lighter";
+  ctx.globalCompositeOperation = 'lighter'
 
   // 回転する放射光。溜めが進むほど長く伸び、弾ける瞬間に一気に開く
-  const rayCount = 18;
+  const rayCount = 18
   const rayLength = Math.min(
     maxRadius,
     maxRadius * (0.25 + 0.75 * easeOutCubic(grow)) * (1 + 0.35 * easeOutCubic(burst)),
-  );
-  ctx.save();
+  )
+  ctx.save()
   // 角速度は秒あたりで決める。正規化時刻で回すと長い演出ほど回転が鈍くなる
-  ctx.rotate(time * 2.6);
-  ctx.globalAlpha = 0.45 * grow * (1 - burst * 0.4);
+  ctx.rotate(time * 2.6)
+  ctx.globalAlpha = 0.45 * grow * (1 - burst * 0.4)
   for (let i = 0; i < rayCount; i++) {
-    const angle = (i / rayCount) * Math.PI * 2;
+    const angle = (i / rayCount) * Math.PI * 2
     const ray = ctx.createLinearGradient(
       0,
       0,
       Math.cos(angle) * rayLength,
       Math.sin(angle) * rayLength,
-    );
-    ray.addColorStop(0, "#ffffff");
-    ray.addColorStop(0.3, accent);
-    ray.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.strokeStyle = ray;
-    ctx.lineWidth = unit * 0.016;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(angle) * rayLength, Math.sin(angle) * rayLength);
-    ctx.stroke();
+    )
+    ray.addColorStop(0, '#ffffff')
+    ray.addColorStop(0.3, accent)
+    ray.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.strokeStyle = ray
+    ctx.lineWidth = unit * 0.016
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.lineTo(Math.cos(angle) * rayLength, Math.sin(angle) * rayLength)
+    ctx.stroke()
   }
-  ctx.restore();
+  ctx.restore()
 
   // 外から中心へ繰り返し縮んでいくリング。
   // 収束の周期も秒で決める。演出が長いレアリティでも吸い込む速さは変わらない
-  const ringCount = 5;
+  const ringCount = 5
   for (let i = 0; i < ringCount; i++) {
-    const t = (time * 2.2 + i / ringCount) % 1;
+    const t = (time * 2.2 + i / ringCount) % 1
     drawSoftRing(
       ctx,
       maxRadius * (1 - easeOutCubic(t)),
       unit * 0.028 * (1 - t * 0.5),
       color,
       pulse(t) * 0.55 * grow * (1 - burst),
-    );
+    )
   }
 
   // 吸い込まれる粒。湧く間隔は演出の長さに合わせ、吸い込む速さは秒で固定する
   for (const particle of intro.particles) {
-    const bornAt = particle.delay * introDuration;
-    const q = progress(time, bornAt, bornAt + particle.travelSeconds);
-    if (q <= 0 || q >= 1) continue;
+    const bornAt = particle.delay * introDuration
+    const q = progress(time, bornAt, bornAt + particle.travelSeconds)
+    if (q <= 0 || q >= 1) continue
 
-    const radius = particle.startRadius * unit * (1 - easeOutCubic(q));
-    const angle = particle.angle + particle.swirl * q;
-    const x = Math.cos(angle) * radius;
-    const y = Math.sin(angle) * radius;
+    const radius = particle.startRadius * unit * (1 - easeOutCubic(q))
+    const angle = particle.angle + particle.swirl * q
+    const x = Math.cos(angle) * radius
+    const y = Math.sin(angle) * radius
     // 出た直後に立ち上げ、中心へ着く頃には吸い込まれて消える
-    const size = particle.size * unit * (1 - q * 0.6);
+    const size = particle.size * unit * (1 - q * 0.6)
 
-    ctx.globalAlpha = Math.min(1, q * 4) * (1 - q) * (1 - burst);
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, size * 3.2);
-    glow.addColorStop(0, "#ffffff");
-    glow.addColorStop(0.35, color);
-    glow.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(x, y, size * 3.2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.globalAlpha = Math.min(1, q * 4) * (1 - q) * (1 - burst)
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, size * 3.2)
+    glow.addColorStop(0, '#ffffff')
+    glow.addColorStop(0.35, color)
+    glow.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(x, y, size * 3.2, 0, Math.PI * 2)
+    ctx.fill()
 
     // 中心へ向かう尾を引かせて、吸い込まれている流れを見せる
-    const tail = ctx.createLinearGradient(x, y, x * 0.72, y * 0.72);
-    tail.addColorStop(0, color);
-    tail.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.globalAlpha *= 0.5;
-    ctx.strokeStyle = tail;
-    ctx.lineWidth = size * 1.4;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x * 0.72, y * 0.72);
-    ctx.stroke();
+    const tail = ctx.createLinearGradient(x, y, x * 0.72, y * 0.72)
+    tail.addColorStop(0, color)
+    tail.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.globalAlpha *= 0.5
+    ctx.strokeStyle = tail
+    ctx.lineWidth = size * 1.4
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x * 0.72, y * 0.72)
+    ctx.stroke()
   }
 
   // 中心の十字フレア。レンズフレアのように長く伸ばして光の強さを誇張する
   const flareLength = Math.min(
     maxRadius,
     maxRadius * (0.5 + 0.5 * easeOutCubic(grow)) * (1 + 0.5 * burst),
-  );
-  ctx.globalAlpha = 0.55 * grow * (1 - burst * 0.3);
+  )
+  ctx.globalAlpha = 0.55 * grow * (1 - burst * 0.3)
   for (const angle of [0, Math.PI / 2]) {
-    const fx = Math.cos(angle) * flareLength;
-    const fy = Math.sin(angle) * flareLength;
-    const flare = ctx.createLinearGradient(-fx, -fy, fx, fy);
-    flare.addColorStop(0, "rgba(0,0,0,0)");
-    flare.addColorStop(0.5, "#ffffff");
-    flare.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.strokeStyle = flare;
-    ctx.lineWidth = unit * (angle === 0 ? 0.012 : 0.008);
-    ctx.beginPath();
-    ctx.moveTo(-fx, -fy);
-    ctx.lineTo(fx, fy);
-    ctx.stroke();
+    const fx = Math.cos(angle) * flareLength
+    const fy = Math.sin(angle) * flareLength
+    const flare = ctx.createLinearGradient(-fx, -fy, fx, fy)
+    flare.addColorStop(0, 'rgba(0,0,0,0)')
+    flare.addColorStop(0.5, '#ffffff')
+    flare.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.strokeStyle = flare
+    ctx.lineWidth = unit * (angle === 0 ? 0.012 : 0.008)
+    ctx.beginPath()
+    ctx.moveTo(-fx, -fy)
+    ctx.lineTo(fx, fy)
+    ctx.stroke()
   }
 
   // 弾けた瞬間、溜めた粒が一気に外へ散る
@@ -409,80 +409,77 @@ export function drawIntro(
     for (const particle of intro.particles) {
       // 粒ごとに散る速さを変える。同じ速さで飛ばすと、きれいな同心円になって
       // 爆発ではなく波紋に見えてしまう
-      const spread = easeOutCubic(Math.min(1, burst * (0.65 + particle.travelSeconds)));
-      const distance = Math.min(
-        maxRadius,
-        maxRadius * spread * (0.45 + particle.startRadius * 1.3),
-      );
-      const angle = particle.angle + particle.swirl * 0.3;
-      const x = Math.cos(angle) * distance;
-      const y = Math.sin(angle) * distance;
-      const size = particle.size * unit * (1 - spread * 0.35);
+      const spread = easeOutCubic(Math.min(1, burst * (0.65 + particle.travelSeconds)))
+      const distance = Math.min(maxRadius, maxRadius * spread * (0.45 + particle.startRadius * 1.3))
+      const angle = particle.angle + particle.swirl * 0.3
+      const x = Math.cos(angle) * distance
+      const y = Math.sin(angle) * distance
+      const size = particle.size * unit * (1 - spread * 0.35)
 
-      ctx.globalAlpha = (1 - spread) * 0.9;
-      const blast = ctx.createRadialGradient(x, y, 0, x, y, size * 3);
-      blast.addColorStop(0, "#ffffff");
-      blast.addColorStop(0.35, color);
-      blast.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = blast;
-      ctx.beginPath();
-      ctx.arc(x, y, size * 3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.globalAlpha = (1 - spread) * 0.9
+      const blast = ctx.createRadialGradient(x, y, 0, x, y, size * 3)
+      blast.addColorStop(0, '#ffffff')
+      blast.addColorStop(0.35, color)
+      blast.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = blast
+      ctx.beginPath()
+      ctx.arc(x, y, size * 3, 0, Math.PI * 2)
+      ctx.fill()
     }
   }
 
   // 中心の光球。溜めるほど大きく、昇格の瞬間に一段膨らむ
-  const pulseScale = 1 + 0.1 * Math.sin(time * 34) * grow;
+  const pulseScale = 1 + 0.1 * Math.sin(time * 34) * grow
   const orbRadius =
     unit *
     (0.025 + 0.13 * easeOutCubic(grow)) *
     stageBoost *
     pulseScale *
     (1 + 0.6 * promotion) *
-    (1 + 2.6 * easeOutCubic(burst));
-  ctx.globalAlpha = Math.min(1, 0.35 + grow) * (1 - burst);
-  const orb = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.min(orbRadius, maxRadius));
-  orb.addColorStop(0, "#ffffff");
-  orb.addColorStop(0.35, color);
-  orb.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = orb;
-  ctx.beginPath();
-  ctx.arc(0, 0, Math.min(orbRadius, maxRadius), 0, Math.PI * 2);
-  ctx.fill();
+    (1 + 2.6 * easeOutCubic(burst))
+  ctx.globalAlpha = Math.min(1, 0.35 + grow) * (1 - burst)
+  const orb = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.min(orbRadius, maxRadius))
+  orb.addColorStop(0, '#ffffff')
+  orb.addColorStop(0.35, color)
+  orb.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = orb
+  ctx.beginPath()
+  ctx.arc(0, 0, Math.min(orbRadius, maxRadius), 0, Math.PI * 2)
+  ctx.fill()
 
   // 昇格した瞬間に走るリング。色が変わったことを見逃さないための合図。
   // 太くはっきり描くと光ではなく輪郭線に見えてしまうので、細く、素早く消す
   if (promotion > 0.01) {
     // 走るリングに加えて、中心から一瞬だけ閃光を広げる。
     // 色が変わったことを、目を離していても気づける強さにする
-    const spread = easeOutCubic(1 - promotion);
+    const spread = easeOutCubic(1 - promotion)
     // リングを 2 重にして、後ろから追いかけるようにずらす
     drawSoftRing(
       ctx,
       maxRadius * (0.15 + 0.6 * spread),
       unit * 0.03 * promotion,
-      "#ffffff",
+      '#ffffff',
       promotion * promotion * 0.85,
-    );
+    )
     drawSoftRing(
       ctx,
       maxRadius * (0.15 + 0.6 * spread) * 0.62,
       unit * 0.022 * promotion,
       color,
       promotion * promotion * 0.7,
-    );
+    )
 
-    const flashRadius = maxRadius * (0.25 + 0.75 * spread);
-    const flash = ctx.createRadialGradient(0, 0, 0, 0, 0, flashRadius);
-    flash.addColorStop(0, "#ffffff");
-    flash.addColorStop(0.4, color);
-    flash.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.globalAlpha = promotion * promotion * 0.55;
-    ctx.fillStyle = flash;
-    ctx.beginPath();
-    ctx.arc(0, 0, flashRadius, 0, Math.PI * 2);
-    ctx.fill();
+    const flashRadius = maxRadius * (0.25 + 0.75 * spread)
+    const flash = ctx.createRadialGradient(0, 0, 0, 0, 0, flashRadius)
+    flash.addColorStop(0, '#ffffff')
+    flash.addColorStop(0.4, color)
+    flash.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.globalAlpha = promotion * promotion * 0.55
+    ctx.fillStyle = flash
+    ctx.beginPath()
+    ctx.arc(0, 0, flashRadius, 0, Math.PI * 2)
+    ctx.fill()
   }
 
-  ctx.restore();
+  ctx.restore()
 }

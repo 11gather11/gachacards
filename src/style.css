@@ -17,7 +17,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  font-family: 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
   font-size: 14px;
 }
 
