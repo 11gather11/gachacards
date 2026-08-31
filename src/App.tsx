@@ -58,6 +58,7 @@ export function App() {
   const [duration, setDuration] = useState(INITIAL.duration);
   const [fps, setFps] = useState<number>(INITIAL.fps);
   const [introMode, setIntroMode] = useState<IntroMode>(INITIAL.introMode);
+  const [introSeconds, setIntroSeconds] = useState(INITIAL.introSeconds);
   const [via, setVia] = useState<RarityId[]>(INITIAL.via);
   const [orientation, setOrientation] = useState<Orientation>(INITIAL.orientation);
   const [sizeId, setSizeId] = useState(INITIAL.sizeId);
@@ -86,6 +87,7 @@ export function App() {
       duration,
       fps,
       introMode,
+      introSeconds,
       via,
       orientation,
       sizeId,
@@ -101,6 +103,7 @@ export function App() {
     duration,
     fps,
     introMode,
+    introSeconds,
     via,
     orientation,
     sizeId,
@@ -125,7 +128,7 @@ export function App() {
   // null は「上書きしていない」の意味なので、レアリティ側の既定値に落とす
   const effectiveBadge = badge ?? rarity.badge;
   // 長さはレアリティによらず一定。変わるのは同じ時間に何段上がるか
-  const introDuration = computeIntroDuration(duration, introMode === "on");
+  const introDuration = computeIntroDuration(introSeconds, duration, introMode === "on");
   // 尺を伸ばすとファイルがどれだけ膨らむかを、書き出す前に見せる
   const estimatedSizeMb = (quality.bitrate * duration) / 8 / 1024 / 1024;
   // 段取りは表示にも使うので、シーンと同じものをここで組み立てて共有する
@@ -309,6 +312,20 @@ export function App() {
           </label>
           {introMode === "on" && (
             <>
+              <label className="field__label" htmlFor="introSeconds">
+                入りの長さ: {introSeconds.toFixed(1)} 秒
+                {introDuration < introSeconds - 0.05 &&
+                  `（尺に収まらないので ${introDuration.toFixed(1)} 秒に短縮）`}
+              </label>
+              <input
+                id="introSeconds"
+                type="range"
+                min={0.5}
+                max={8}
+                step={0.1}
+                value={introSeconds}
+                onChange={(event) => setIntroSeconds(Number(event.target.value))}
+              />
               {intermediates.length > 0 && (
                 <>
                   <span className="field__label">途中で通す色（外すと飛ばす）</span>

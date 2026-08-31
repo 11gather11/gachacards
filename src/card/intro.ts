@@ -4,9 +4,9 @@
  * 光が中心に集まり、膨らんで、弾けた瞬間にカードが出る。ここまではどのレアリティでも
  * 同じ動きで、違うのは「光の色」だけ。
  *
- * 光は必ず白から始まり、そこから本来のレアリティまで保留カラーを 1 段ずつ上がっていく。
- * パチンコの保留変化と同じ「色が変わった瞬間にアツくなる」を、段数のぶんだけ繰り返す。
- * 上位のレアリティほど通る段数が多く、そのぶん演出も長くなる。
+ * 光は必ず白から始まり、そこから本来のレアリティまで保留カラーを上がっていく。
+ * パチンコの保留変化と同じ「色が変わった瞬間にアツくなる」を、通る色の数だけ繰り返す。
+ * 途中でどの色を通すかも、演出全体の長さも、呼び出し側から指定する。
  */
 
 import { createRng, easeOutCubic, progress, pulse, randomBetween } from "./math.ts";
@@ -64,29 +64,25 @@ function countPromotions(target: RarityPreset): number {
 }
 
 /**
- * 入り演出の長さ（秒）。
- *
- * レアリティによらず一定にしている。段数に比例させると下位レアリティの前振りが
- * 一瞬で終わってしまい、演出として物足りなくなるため。上位らしさは
- * 「同じ時間の中で何段上がるか」と「光の強さ」で出す。
- */
-const INTRO_SECONDS = 1.8;
-
-/**
  * 入り演出の長さを決める。
  *
+ * 長さはレアリティによらず、指定された秒数で一定にする。段数に比例させると
+ * 下位レアリティの前振りが一瞬で終わってしまい、演出として物足りなくなるため。
+ * 上位らしさは「同じ時間の中で何段上がるか」と「光の強さ」で出す。
+ *
+ * @param wanted - UI で指定された長さ（秒）
  * @param duration - 全体の尺（秒）
  * @param enabled - 入り演出を出すかどうか
  * @returns 入り演出の長さ（秒）。無効なら 0
  *
  * @example
- * computeIntroDuration(8, true); // => 1.8
- * computeIntroDuration(2, true); // => 0.9（尺が短いので詰められる）
+ * computeIntroDuration(4, 8, true); // => 4
+ * computeIntroDuration(4, 5, true); // => 3（尺が短いので詰められる）
  */
-export function computeIntroDuration(duration: number, enabled: boolean): number {
+export function computeIntroDuration(wanted: number, duration: number, enabled: boolean): number {
   if (!enabled) return 0;
-  // 尺の半分近くを前振りに使うとカードを見せる時間が残らないので頭打ちにする
-  return Math.min(INTRO_SECONDS, duration * 0.45);
+  // 尺の 6 割を超えて前振りに使うとカードを見せる時間が残らないので頭打ちにする
+  return Math.min(wanted, duration * 0.6);
 }
 
 /**

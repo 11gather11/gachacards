@@ -25,6 +25,8 @@ export interface Settings {
   fps: number;
   /** カードが出る前の共通演出の出し方。 */
   introMode: IntroMode;
+  /** 入り演出の長さ（秒）。尺が短ければ自動で詰められる。 */
+  introSeconds: number;
   /** 白から目的の色に上がるまでに、途中で通す色。 */
   via: RarityId[];
   /** カードの向き。 */
@@ -49,6 +51,7 @@ export const DEFAULT_SETTINGS: Settings = {
   duration: 8,
   fps: 30,
   introMode: "on",
+  introSeconds: 4,
   // 既定は途中の色をすべて通る（1 段ずつ上がる）
   via: ["blue", "green", "red", "gold"],
   // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする
