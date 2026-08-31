@@ -1,7 +1,53 @@
+import * as stylex from '@stylexjs/stylex'
 import { useCallback, useRef, useState } from 'react'
 
 import { toErrorMessage } from '../errors.ts'
+import { colors } from '../theme.stylex.ts'
 import type { Artwork } from '../types.ts'
+
+const styles = stylex.create({
+  zone: {
+    display: 'grid',
+    placeItems: 'center',
+    minHeight: 108,
+    padding: 14,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    cursor: 'pointer',
+    textAlign: 'center',
+    transitionProperty: 'border-color, background',
+    transitionDuration: '0.15s',
+    // ドラッグ中の見た目は hover と同じにする。ホバーは擬似クラスで足りるが、
+    // ドラッグ中は状態として持たないと表せない
+    backgroundColor: {
+      default: colors.panelSoft,
+      ':hover': '#212a3a',
+    },
+    borderColor: {
+      default: colors.line,
+      ':hover': colors.accent,
+    },
+  },
+  zoneDragging: {
+    backgroundColor: '#212a3a',
+    borderColor: colors.accent,
+  },
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    alignItems: 'center',
+  },
+  icon: {
+    fontSize: 22,
+    color: colors.textDim,
+  },
+  hint: {
+    color: colors.textDim,
+    fontSize: 11,
+  },
+})
 
 interface ImageDropZoneProps {
   artwork: Artwork | null
@@ -41,7 +87,7 @@ export function ImageDropZone({ artwork, onSelect, onError }: ImageDropZoneProps
 
   return (
     <div
-      className={`dropzone${isDragging ? ' dropzone--active' : ''}`}
+      {...stylex.props(styles.zone, isDragging && styles.zoneDragging)}
       onDragOver={(event) => {
         event.preventDefault()
         setIsDragging(true)
@@ -73,18 +119,18 @@ export function ImageDropZone({ artwork, onSelect, onError }: ImageDropZoneProps
         }}
       />
       {artwork ? (
-        <div className="dropzone__loaded">
+        <div {...stylex.props(styles.stack)}>
           <strong>{artwork.fileName}</strong>
           <span>
             {artwork.width} × {artwork.height}
           </span>
-          <span className="dropzone__hint">クリックまたはドロップで差し替え</span>
+          <span {...stylex.props(styles.hint)}>クリックまたはドロップで差し替え</span>
         </div>
       ) : (
-        <div className="dropzone__empty">
-          <span className="dropzone__icon">＋</span>
+        <div {...stylex.props(styles.stack)}>
+          <span {...stylex.props(styles.icon)}>＋</span>
           <strong>画像をドロップ</strong>
-          <span className="dropzone__hint">クリックしてファイルを選択</span>
+          <span {...stylex.props(styles.hint)}>クリックしてファイルを選択</span>
         </div>
       )}
     </div>

@@ -1,7 +1,47 @@
+import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState } from 'react'
 
 import type { CardScene } from '../card/render.ts'
 import { renderFrame } from '../card/render.ts'
+import { colors } from '../theme.stylex.ts'
+import { ui } from '../ui.ts'
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    alignItems: 'center',
+    maxWidth: '100%',
+  },
+  stage: {
+    display: 'grid',
+    placeItems: 'center',
+    minHeight: 0,
+  },
+  canvas: {
+    maxHeight: '62vh',
+    maxWidth: '100%',
+    height: 'auto',
+    width: 'auto',
+  },
+  controls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
+  },
+  seek: {
+    flex: 1,
+  },
+  time: {
+    color: colors.textDim,
+    fontSize: 12,
+    fontVariantNumeric: 'tabular-nums',
+    minWidth: 96,
+    textAlign: 'right',
+  },
+})
 
 interface PreviewCanvasProps {
   scene: CardScene
@@ -65,18 +105,22 @@ export function PreviewCanvas({ scene }: PreviewCanvasProps) {
   }, [scene])
 
   return (
-    <div className="preview">
-      <div className="preview__stage">
+    <div {...stylex.props(styles.root)}>
+      <div {...stylex.props(styles.stage)}>
         <canvas
           ref={canvasRef}
           width={scene.width}
           height={scene.height}
-          className="preview__canvas"
+          {...stylex.props(styles.canvas)}
         />
       </div>
 
-      <div className="preview__controls">
-        <button type="button" className="button" onClick={() => setIsPlaying((value) => !value)}>
+      <div {...stylex.props(styles.controls)}>
+        <button
+          type="button"
+          onClick={() => setIsPlaying((value) => !value)}
+          {...stylex.props(ui.button)}
+        >
           {isPlaying ? '■ 停止' : '▶ 再生'}
         </button>
         <input
@@ -86,7 +130,7 @@ export function PreviewCanvas({ scene }: PreviewCanvasProps) {
           max={scene.duration}
           step={0.01}
           defaultValue={0}
-          className="preview__seek"
+          {...stylex.props(styles.seek)}
           onPointerDown={() => {
             scrubbingRef.current = true
           }}
@@ -97,7 +141,7 @@ export function PreviewCanvas({ scene }: PreviewCanvasProps) {
             timeRef.current = Number(event.currentTarget.value)
           }}
         />
-        <span ref={timeLabelRef} className="preview__time" />
+        <span ref={timeLabelRef} {...stylex.props(styles.time)} />
       </div>
     </div>
   )

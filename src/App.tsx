@@ -1,3 +1,4 @@
+import * as stylex from '@stylexjs/stylex'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { IntroMode } from './card/intro.ts'
@@ -18,8 +19,143 @@ import { RarityPicker } from './components/RarityPicker.tsx'
 import { toErrorMessage } from './errors.ts'
 import { canExportTransparentWebm, exportWebm } from './export/webm.ts'
 import { drawSeed, loadSettings, saveSettings } from './settings.ts'
+import { colors } from './theme.stylex.ts'
 import type { Artwork, Orientation } from './types.ts'
 import { QUALITY_PRESETS, SIZE_PRESETS, isOrientation, resolveFrameSize } from './types.ts'
+import { ui } from './ui.ts'
+
+/**
+ * 透過を確かめるための市松模様。
+ *
+ * stylex.create の中身はビルド時に静的解析されるので、関数を呼んで組み立てられない
+ * （`Unsupported expression` で弾かれる）。タイルの大きさ違いで 2 回書いているのは
+ * そのため。
+ */
+const CHECKER_IMAGE = [
+  'linear-gradient(45deg, #1d2432 25%, transparent 25%)',
+  'linear-gradient(-45deg, #1d2432 25%, transparent 25%)',
+  'linear-gradient(45deg, transparent 75%, #1d2432 75%)',
+  'linear-gradient(-45deg, transparent 75%, #1d2432 75%)',
+].join(', ')
+
+const styles = stylex.create({
+  app: {
+    display: 'grid',
+    gridTemplateColumns: { default: '340px 1fr', '@media (max-width: 900px)': '1fr' },
+    minHeight: '100vh',
+  },
+  panel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 18,
+    padding: 20,
+    backgroundColor: colors.panel,
+    borderRight: `1px solid ${colors.line}`,
+    overflowY: 'auto',
+    maxHeight: { default: '100vh', '@media (max-width: 900px)': 'none' },
+  },
+  title: {
+    margin: 0,
+    fontSize: 18,
+    letterSpacing: '0.02em',
+  },
+  subtitle: {
+    margin: '4px 0 0',
+    color: colors.textDim,
+    fontSize: 12,
+  },
+  stage: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+    padding: 20,
+    minWidth: 0,
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chip: {
+    padding: '5px 12px',
+    backgroundColor: colors.panel,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors.line,
+    borderRadius: 999,
+    color: colors.textDim,
+    font: 'inherit',
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+  chipActive: {
+    borderColor: colors.accent,
+    color: colors.text,
+  },
+  view: {
+    display: 'grid',
+    placeItems: 'center',
+    flex: 1,
+    padding: 16,
+    border: `1px solid ${colors.line}`,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  viewChecker: {
+    backgroundColor: '#2a3242',
+    backgroundImage: CHECKER_IMAGE,
+    backgroundSize: '24px 24px',
+    backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0',
+  },
+  viewDark: { backgroundColor: '#05070b' },
+  viewLight: { backgroundColor: '#e9eef7' },
+  viewStream: {
+    backgroundImage: [
+      'radial-gradient(circle at 30% 20%, #2f4d7a, transparent 60%)',
+      'radial-gradient(circle at 70% 80%, #6b2f5e, transparent 55%)',
+      'linear-gradient(160deg, #101828, #1d2a3f)',
+    ].join(', '),
+  },
+  via: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10,
+  },
+  viaCheckbox: {
+    gap: 5,
+    color: colors.text,
+  },
+  result: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  resultHead: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  resultVideo: {
+    maxHeight: '24vh',
+    alignSelf: 'flex-start',
+    border: `1px solid ${colors.line}`,
+    borderRadius: 10,
+    backgroundColor: '#2a3242',
+    backgroundImage: CHECKER_IMAGE,
+    backgroundSize: '16px 16px',
+    backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0',
+  },
+})
+
+/** プレビュー背景の値から、対応するスタイルを引く。 */
+const VIEW_STYLES = {
+  checker: styles.viewChecker,
+  dark: styles.viewDark,
+  light: styles.viewLight,
+  stream: styles.viewStream,
+} as const
 
 /** プレビューの下に敷く背景。透過の確認用に切り替える。 */
 type PreviewBackground = 'checker' | 'dark' | 'light' | 'stream'
@@ -224,39 +360,39 @@ export function App() {
   const isExporting = progress !== null
 
   return (
-    <div className="app">
-      <aside className="panel">
-        <header className="panel__header">
-          <h1>Card Alert Maker</h1>
-          <p>画像から、透過 WebM のカード演出を作る</p>
+    <div {...stylex.props(styles.app)}>
+      <aside {...stylex.props(styles.panel)}>
+        <header>
+          <h1 {...stylex.props(styles.title)}>Card Alert Maker</h1>
+          <p {...stylex.props(styles.subtitle)}>画像から、透過 WebM のカード演出を作る</p>
         </header>
 
-        <section className="field">
-          <span className="field__label">アートワーク</span>
+        <section {...stylex.props(ui.field)}>
+          <span {...stylex.props(ui.label)}>アートワーク</span>
           <ImageDropZone artwork={artwork} onSelect={setArtwork} onError={setError} />
         </section>
 
-        <section className="field">
-          <span className="field__label">レアリティ（保留カラー）</span>
+        <section {...stylex.props(ui.field)}>
+          <span {...stylex.props(ui.label)}>レアリティ（保留カラー）</span>
           <RarityPicker value={rarityId} onChange={setRarityId} />
         </section>
 
-        <section className="field">
-          <label className="field__label" htmlFor="badge">
+        <section {...stylex.props(ui.field)}>
+          <label {...stylex.props(ui.label)} htmlFor="badge">
             ランク表記（空ならバッジを出さない）
           </label>
-          <div className="input-row">
+          <div {...stylex.props(ui.inputRow)}>
             <input
               id="badge"
               type="text"
-              className="input"
+              {...stylex.props(ui.input)}
               value={effectiveBadge}
               maxLength={12}
               onChange={(event) => setBadge(event.target.value)}
             />
             <button
               type="button"
-              className="button"
+              {...stylex.props(ui.button)}
               title="レアリティごとの既定値に戻す"
               disabled={badge === null}
               onClick={() => setBadge(null)}
@@ -266,29 +402,29 @@ export function App() {
           </div>
         </section>
 
-        <section className="field">
-          <label className="field__label" htmlFor="title">
+        <section {...stylex.props(ui.field)}>
+          <label {...stylex.props(ui.label)} htmlFor="title">
             カード名（空なら帯を出さない）
           </label>
           <input
             id="title"
             type="text"
-            className="input"
+            {...stylex.props(ui.input)}
             value={title}
             placeholder="例: ゲリラ豪雨"
             onChange={(event) => setTitle(event.target.value)}
           />
           <input
             type="text"
-            className="input"
+            {...stylex.props(ui.input)}
             value={subtitle}
             placeholder="サブテキスト（任意）"
             onChange={(event) => setSubtitle(event.target.value)}
           />
         </section>
 
-        <section className="field">
-          <label className="field__label" htmlFor="duration">
+        <section {...stylex.props(ui.field)}>
+          <label {...stylex.props(ui.label)} htmlFor="duration">
             尺: {duration.toFixed(1)} 秒（推定 {estimatedSizeMb.toFixed(1)} MB）
           </label>
           <input
@@ -302,8 +438,8 @@ export function App() {
           />
         </section>
 
-        <section className="field">
-          <label className="checkbox">
+        <section {...stylex.props(ui.field)}>
+          <label {...stylex.props(ui.checkbox)}>
             <input
               type="checkbox"
               checked={introMode === 'on'}
@@ -313,7 +449,7 @@ export function App() {
           </label>
           {introMode === 'on' && (
             <>
-              <label className="field__label" htmlFor="introSeconds">
+              <label {...stylex.props(ui.label)} htmlFor="introSeconds">
                 入りの長さ: {introSeconds.toFixed(1)} 秒
                 {introDuration < introSeconds - 0.05 &&
                   `（尺に収まらないので ${introDuration.toFixed(1)} 秒に短縮）`}
@@ -329,10 +465,10 @@ export function App() {
               />
               {intermediates.length > 0 && (
                 <>
-                  <span className="field__label">途中で通す色（外すと飛ばす）</span>
-                  <div className="via">
+                  <span {...stylex.props(ui.label)}>途中で通す色（外すと飛ばす）</span>
+                  <div {...stylex.props(styles.via)}>
                     {intermediates.map((preset) => (
-                      <label key={preset.id} className="checkbox">
+                      <label key={preset.id} {...stylex.props(ui.checkbox, styles.viaCheckbox)}>
                         <input
                           type="checkbox"
                           checked={via.includes(preset.id)}
@@ -349,14 +485,14 @@ export function App() {
                     ))}
                     <button
                       type="button"
-                      className="button button--slim"
+                      {...stylex.props(ui.button, ui.buttonSlim)}
                       onClick={() => setVia(intermediates.map((preset) => preset.id))}
                     >
                       全部
                     </button>
                     <button
                       type="button"
-                      className="button button--slim"
+                      {...stylex.props(ui.button, ui.buttonSlim)}
                       onClick={() => setVia([])}
                     >
                       一気に
@@ -364,7 +500,7 @@ export function App() {
                   </div>
                 </>
               )}
-              <p className="notice">
+              <p {...stylex.props(ui.notice)}>
                 {introStages.map((stage) => stage.rarity.label).join(' → ')}
                 {' / '}
                 {introDuration.toFixed(2)} 秒
@@ -373,11 +509,11 @@ export function App() {
           )}
         </section>
 
-        <section className="field field--row">
-          <label className="field__sub">
-            <span className="field__label">向き</span>
+        <section {...stylex.props(ui.field, ui.fieldRow)}>
+          <label {...stylex.props(ui.fieldSub)}>
+            <span {...stylex.props(ui.label)}>向き</span>
             <select
-              className="input"
+              {...stylex.props(ui.input)}
               value={orientation}
               onChange={(event) => {
                 if (isOrientation(event.target.value)) setOrientation(event.target.value)
@@ -387,10 +523,10 @@ export function App() {
               <option value="portrait">縦長</option>
             </select>
           </label>
-          <label className="field__sub">
-            <span className="field__label">サイズ</span>
+          <label {...stylex.props(ui.fieldSub)}>
+            <span {...stylex.props(ui.label)}>サイズ</span>
             <select
-              className="input"
+              {...stylex.props(ui.input)}
               value={sizeId}
               onChange={(event) => setSizeId(event.target.value)}
             >
@@ -406,11 +542,11 @@ export function App() {
           </label>
         </section>
 
-        <section className="field field--row">
-          <label className="field__sub">
-            <span className="field__label">fps</span>
+        <section {...stylex.props(ui.field, ui.fieldRow)}>
+          <label {...stylex.props(ui.fieldSub)}>
+            <span {...stylex.props(ui.label)}>fps</span>
             <select
-              className="input"
+              {...stylex.props(ui.input)}
               value={fps}
               onChange={(event) => setFps(Number(event.target.value))}
             >
@@ -421,10 +557,10 @@ export function App() {
               ))}
             </select>
           </label>
-          <label className="field__sub">
-            <span className="field__label">画質</span>
+          <label {...stylex.props(ui.fieldSub)}>
+            <span {...stylex.props(ui.label)}>画質</span>
             <select
-              className="input"
+              {...stylex.props(ui.input)}
               value={qualityId}
               onChange={(event) => setQualityId(event.target.value)}
             >
@@ -437,13 +573,13 @@ export function App() {
           </label>
         </section>
 
-        <section className="field field--row">
-          <label className="field__sub">
-            <span className="field__label">パーティクルの種</span>
-            <div className="input-row">
+        <section {...stylex.props(ui.field, ui.fieldRow)}>
+          <label {...stylex.props(ui.fieldSub)}>
+            <span {...stylex.props(ui.label)}>パーティクルの種</span>
+            <div {...stylex.props(ui.inputRow)}>
               <input
                 type="number"
-                className="input"
+                {...stylex.props(ui.input)}
                 value={seed}
                 min={0}
                 step={1}
@@ -453,7 +589,7 @@ export function App() {
               />
               <button
                 type="button"
-                className="button"
+                {...stylex.props(ui.button)}
                 title="別の配置を引き直す"
                 onClick={() => setSeed(drawSeed())}
               >
@@ -463,8 +599,8 @@ export function App() {
           </label>
         </section>
 
-        <section className="field">
-          <label className="checkbox">
+        <section {...stylex.props(ui.field)}>
+          <label {...stylex.props(ui.checkbox)}>
             <input
               type="checkbox"
               checked={loop}
@@ -474,10 +610,10 @@ export function App() {
           </label>
         </section>
 
-        <section className="field">
+        <section {...stylex.props(ui.field)}>
           <button
             type="button"
-            className="button button--primary"
+            {...stylex.props(ui.button, ui.buttonPrimary)}
             onClick={() => void handleExport()}
             disabled={isExporting || isSupported === false}
           >
@@ -486,27 +622,31 @@ export function App() {
               : '透過 WebM を書き出す'}
           </button>
           {isExporting && (
-            <button type="button" className="button" onClick={() => abortRef.current?.abort()}>
+            <button
+              type="button"
+              {...stylex.props(ui.button)}
+              onClick={() => abortRef.current?.abort()}
+            >
               中断
             </button>
           )}
           {isSupported === false && (
-            <p className="notice notice--error">
+            <p {...stylex.props(ui.notice, ui.noticeError)}>
               このブラウザは VP9 エンコードに対応していません。Chrome か Edge で開いてください。
             </p>
           )}
-          {error && <p className="notice notice--error">{error}</p>}
+          {error && <p {...stylex.props(ui.notice, ui.noticeError)}>{error}</p>}
         </section>
       </aside>
 
-      <main className="stage">
-        <div className="stage__toolbar">
-          <span className="field__label">プレビュー背景</span>
+      <main {...stylex.props(styles.stage)}>
+        <div {...stylex.props(styles.toolbar)}>
+          <span {...stylex.props(ui.label)}>プレビュー背景</span>
           {(['checker', 'dark', 'light', 'stream'] as const).map((value) => (
             <button
               key={value}
               type="button"
-              className={`chip${background === value ? ' chip--active' : ''}`}
+              {...stylex.props(styles.chip, background === value && styles.chipActive)}
               onClick={() => setBackground(value)}
             >
               {value === 'checker' && '市松'}
@@ -517,25 +657,32 @@ export function App() {
           ))}
         </div>
 
-        <div className={`stage__view stage__view--${background}`}>
+        <div {...stylex.props(styles.view, VIEW_STYLES[background])}>
           <PreviewCanvas scene={scene} />
         </div>
 
         {result && (
-          <div className="result">
-            <div className="result__head">
-              <span className="field__label">
+          <div {...stylex.props(styles.result)}>
+            <div {...stylex.props(styles.resultHead)}>
+              <span {...stylex.props(ui.label)}>
                 書き出した WebM（透過のまま再生中） — {result.summary}
               </span>
               <button
                 type="button"
-                className="button button--primary"
+                {...stylex.props(ui.button, ui.buttonPrimary)}
                 onClick={() => downloadBlob(result.blob, result.fileName)}
               >
                 ⬇ {result.fileName} を保存
               </button>
             </div>
-            <video src={result.url} autoPlay loop muted playsInline className="result__video" />
+            <video
+              src={result.url}
+              autoPlay
+              loop
+              muted
+              playsInline
+              {...stylex.props(styles.resultVideo)}
+            />
           </div>
         )}
       </main>

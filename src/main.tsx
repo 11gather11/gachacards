@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 
 import { App } from './App.tsx'
 
-import './style.css'
+import './global.css'
 
 const container = document.getElementById('root')
 if (!container) throw new Error('#root が見つかりません')

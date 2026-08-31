@@ -2,9 +2,17 @@ import stylex from '@stylexjs/unplugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite-plus'
 
-export default defineConfig({
-  // StyleX はビルド時に静的 CSS へ畳む。react より先に置く必要がある
-  plugins: [stylex(), react()],
+export default defineConfig(({ mode }) => ({
+  // StyleX はビルド時に静的 CSS へ畳む。react より先に置く必要がある。
+  // 生成された CSS は、既存の CSS アセット（global.css）に注入される
+  plugins: [
+    stylex({
+      useCSSLayers: true,
+      dev: mode === 'development',
+      runtimeInjection: false,
+    }),
+    react(),
+  ],
   staged: {
     '*': 'vp check --fix',
   },
@@ -44,4 +52,4 @@ export default defineConfig({
     },
     options: { typeAware: true, typeCheck: true },
   },
-})
+}))
