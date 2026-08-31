@@ -672,7 +672,10 @@ function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): vo
  * @param height - フレームの高さ（px）
  */
 function fadeFrameEdges(ctx: Canvas2dContext, width: number, height: number): void {
-  const fade = Math.min(width, height) * 0.05
+  // 幅を取りすぎると光が届く前に落ちてしまうので、端ぎりぎりまで寄せる。
+  // ぼかしは幅の半分。canvas の blur(r) は 1.5r ほどで消えるため、
+  // 矩形の縁から外へ 0.75 * fade で 0 になり、端まで余裕が残る
+  const fade = Math.min(width, height) * 0.03
   ctx.save()
   ctx.globalCompositeOperation = 'destination-in'
   ctx.filter = `blur(${fade / 2}px)`
