@@ -1,8 +1,10 @@
+import stylex from '@stylexjs/unplugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
-  plugins: [react()],
+  // StyleX はビルド時に静的 CSS へ畳む。react より先に置く必要がある
+  plugins: [stylex(), react()],
   staged: {
     '*': 'vp check --fix',
   },
