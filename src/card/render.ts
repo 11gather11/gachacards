@@ -677,11 +677,18 @@ function fadeFrameEdges(ctx: Canvas2dContext, width: number, height: number): vo
   // ぼかしは幅の半分。canvas の blur(r) は 1.5r ほどで消えるため、
   // 矩形の縁から外へ 0.75 * fade で 0 になり、端まで余裕が残る
   const fade = Math.min(width, height) * 0.03
+  // 角を丸めずに矩形で切ると、直角の内側だけ縦横のフェードが掛け算になって
+  // 急に落ちる。等高線もそこで直角に折れるので、丸いグローの中に四角い縁が
+  // 浮き出てしまう。グローの等高線と同じくらいの曲率まで丸めておくと、
+  // 落ち方が全周でそろって縁が見えなくなる
+  const radius = Math.min(width, height) * 0.14
   ctx.save()
   ctx.globalCompositeOperation = 'destination-in'
   ctx.filter = `blur(${fade / 2}px)`
   ctx.fillStyle = '#000'
-  ctx.fillRect(fade, fade, width - fade * 2, height - fade * 2)
+  ctx.beginPath()
+  ctx.roundRect(fade, fade, width - fade * 2, height - fade * 2, radius)
+  ctx.fill()
   ctx.restore()
 }
 
