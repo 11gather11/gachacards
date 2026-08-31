@@ -16,6 +16,17 @@ export interface Artwork {
  */
 export type Orientation = "landscape" | "portrait";
 
+/**
+ * 文字列が {@link Orientation} かどうかを判定する。
+ *
+ * select の `value` は string でしか取れないため、型で決めつけずここを通す。
+ *
+ * @param value - 判定する文字列
+ */
+export function isOrientation(value: string): value is Orientation {
+  return value === "landscape" || value === "portrait";
+}
+
 /** 出力解像度のプリセット。実際の幅と高さは向きによって入れ替わる。 */
 export interface SizePreset {
   id: string;

@@ -1,6 +1,20 @@
 import type { RarityId } from "../card/rarity.ts";
 import { RARITY_PRESETS } from "../card/rarity.ts";
 
+/**
+ * ボタンに渡す CSS 変数。
+ *
+ * `CSSProperties` はカスタムプロパティを持たないので、変数名の形の
+ * インデックスシグネチャを足して受け取れるようにしている。
+ * ここを型アサーションで押し通すと、綴り違いのプロパティまで通ってしまう。
+ */
+function swatchStyle(
+  color: string,
+  glow: string,
+): React.CSSProperties & Record<`--${string}`, string> {
+  return { "--rarity-color": color, "--rarity-glow": glow };
+}
+
 interface RarityPickerProps {
   value: RarityId;
   onChange: (value: RarityId) => void;
@@ -25,12 +39,7 @@ export function RarityPicker({ value, onChange }: RarityPickerProps) {
             type="button"
             className={`rarity__item${isActive ? " rarity__item--active" : ""}`}
             onClick={() => onChange(preset.id)}
-            style={
-              {
-                "--rarity-color": swatch,
-                "--rarity-glow": preset.glowColor,
-              } as React.CSSProperties
-            }
+            style={swatchStyle(swatch, preset.glowColor)}
             aria-pressed={isActive}
           >
             <span className="rarity__swatch" />

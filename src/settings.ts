@@ -73,15 +73,17 @@ export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
-    const parsed = JSON.parse(raw) as Partial<Settings>;
+    // JSON.parse は any を返す。そのまま Settings とみなすと、壊れた保存値が
+    // 型の裏をすり抜けてしまうので、まず object かどうかだけ確かめる
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return { ...DEFAULT_SETTINGS };
+
+    // 以前は "none" / "promote" / "fake" を保存していた。
+    // 演出の種類は無くなったので、出すか出さないかだけを引き継ぐ
+    const introMode: IntroMode = "introMode" in parsed && parsed.introMode === "off" ? "off" : "on";
+
     // 保存後にキーが増えても壊れないよう、既定値の上に読めた分だけ重ねる
-    return {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      // 以前は "none" / "promote" / "fake" を保存していた。
-      // 演出の種類は無くなったので、出すか出さないかだけを引き継ぐ
-      introMode: parsed.introMode === "off" ? "off" : "on",
-    };
+    return { ...DEFAULT_SETTINGS, ...parsed, introMode };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

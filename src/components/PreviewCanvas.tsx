@@ -28,9 +28,9 @@ export function PreviewCanvas({ scene }: PreviewCanvasProps) {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return undefined;
     const ctx = canvas.getContext("2d", { alpha: true });
-    if (!ctx) return;
+    if (!ctx) return undefined;
 
     // 尺を縮めたときに再生位置が範囲外に取り残されないようにする
     if (timeRef.current > scene.duration) timeRef.current = 0;

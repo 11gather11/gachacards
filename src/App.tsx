@@ -16,9 +16,10 @@ import { getRarity } from "./card/rarity.ts";
 import type { CardScene } from "./card/render.ts";
 import { computeCardSize, computeTimeline } from "./card/render.ts";
 import { canExportTransparentWebm, exportWebm } from "./export/webm.ts";
+import { toErrorMessage } from "./errors.ts";
 import { drawSeed, loadSettings, saveSettings } from "./settings.ts";
 import type { Artwork, Orientation } from "./types.ts";
-import { QUALITY_PRESETS, SIZE_PRESETS, resolveFrameSize } from "./types.ts";
+import { QUALITY_PRESETS, SIZE_PRESETS, isOrientation, resolveFrameSize } from "./types.ts";
 
 /** プレビューの下に敷く背景。透過の確認用に切り替える。 */
 type PreviewBackground = "checker" | "dark" | "light" | "stream";
@@ -213,7 +214,7 @@ export function App() {
         summary: `${(exported.blob.size / 1024 / 1024).toFixed(2)} MB / ${exported.frameCount} フレーム / ${(exported.elapsedMs / 1000).toFixed(1)} 秒`,
       });
     } catch (caught) {
-      setError((caught as Error).message);
+      setError(toErrorMessage(caught));
     } finally {
       setProgress(null);
       abortRef.current = null;
@@ -378,7 +379,9 @@ export function App() {
             <select
               className="input"
               value={orientation}
-              onChange={(event) => setOrientation(event.target.value as Orientation)}
+              onChange={(event) => {
+                if (isOrientation(event.target.value)) setOrientation(event.target.value);
+              }}
             >
               <option value="landscape">横長</option>
               <option value="portrait">縦長</option>

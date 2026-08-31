@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
+import { toErrorMessage } from "../errors.ts";
 import type { Artwork } from "../types.ts";
 
 interface ImageDropZoneProps {
@@ -32,7 +33,7 @@ export function ImageDropZone({ artwork, onSelect, onError }: ImageDropZoneProps
           fileName: file.name.replace(/\.[^.]+$/, ""),
         });
       } catch (error) {
-        onError(`画像を読み込めませんでした: ${(error as Error).message}`);
+        onError(`画像を読み込めませんでした: ${toErrorMessage(error)}`);
       }
     },
     [onSelect, onError],
