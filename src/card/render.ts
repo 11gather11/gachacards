@@ -491,6 +491,81 @@ function drawShockwave(
 }
 
 /**
+ * 着地の瞬間だけ走る集中線と十字フレア。
+ *
+ * カードが出た瞬間をいちばん強い山にしたいので、衝撃波や閃光に重ねて
+ * 一度だけ弾けさせる。半径はフレームの内側に収める。
+ *
+ * @param ctx - 描画先。カード中心が原点になるよう変換済みであること
+ * @param scene - 描画中のシーン
+ * @param timeline - 演出の区切り時刻
+ * @param time - アニメーション先頭からの経過秒
+ */
+function drawImpactBurst(
+  ctx: Canvas2dContext,
+  scene: CardScene,
+  timeline: Timeline,
+  time: number,
+): void {
+  const strength = scene.rarity.flash;
+  if (strength < 0.2) return;
+
+  const t = progress(time, timeline.entranceEnd - 0.04, timeline.entranceEnd + 0.34);
+  if (t <= 0 || t >= 1) return;
+
+  const unit = Math.min(scene.width, scene.height);
+  const maxRadius = unit * 0.46;
+  const reach = maxRadius * (0.35 + 0.65 * easeOutCubic(t));
+  const fade = (1 - t) * strength;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+
+  // 放射状の集中線。着地の瞬間に外へ突き抜ける
+  const rayCount = 20;
+  ctx.globalAlpha *= fade * 0.55;
+  ctx.rotate(t * 0.5);
+  for (let i = 0; i < rayCount; i++) {
+    const angle = (i / rayCount) * Math.PI * 2;
+    const x = Math.cos(angle) * reach;
+    const y = Math.sin(angle) * reach;
+    // 中心を透明にして、カードのアートを覆わずに外側だけ突き抜けさせる
+    const ray = ctx.createLinearGradient(0, 0, x, y);
+    ray.addColorStop(0, "rgba(0,0,0,0)");
+    ray.addColorStop(0.45, "#ffffff");
+    ray.addColorStop(0.7, scene.rarity.glowColor);
+    ray.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.strokeStyle = ray;
+    ctx.lineWidth = unit * 0.014 * (1 - t);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+
+  // 横に長い十字フレア。派手さを一段足す
+  for (const angle of [0, Math.PI / 2]) {
+    const fx = Math.cos(angle) * reach;
+    const fy = Math.sin(angle) * reach;
+    // 十字も中心は抜いて、カードの左右・上下に伸びる光にする
+    const flare = ctx.createLinearGradient(-fx, -fy, fx, fy);
+    flare.addColorStop(0, "rgba(0,0,0,0)");
+    flare.addColorStop(0.25, "#ffffff");
+    flare.addColorStop(0.5, "rgba(0,0,0,0)");
+    flare.addColorStop(0.75, "#ffffff");
+    flare.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.strokeStyle = flare;
+    ctx.lineWidth = unit * (angle === 0 ? 0.018 : 0.012) * (1 - t);
+    ctx.beginPath();
+    ctx.moveTo(-fx, -fy);
+    ctx.lineTo(fx, fy);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/**
  * 着地時の閃光。全面を白く塗るとアラートとして眩しすぎるので、
  * カード中心からのラジアルグラデーションで周囲だけを光らせる。
  */
@@ -502,8 +577,8 @@ function drawFlash(ctx: Canvas2dContext, scene: CardScene, impact: number): void
   // 端で切られて、配信画面に四角い光の板が乗ってしまう
   const radius = Math.min(scene.width, scene.height) * 0.48;
   const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-  gradient.addColorStop(0, `rgba(255,255,255,${0.55 * strength})`);
-  gradient.addColorStop(0.45, `rgba(255,255,255,${0.18 * strength})`);
+  gradient.addColorStop(0, `rgba(255,255,255,${0.72 * strength})`);
+  gradient.addColorStop(0.45, `rgba(255,255,255,${0.26 * strength})`);
   gradient.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = gradient;
   // グラデーションが 0 になる範囲だけを塗り、矩形の継ぎ目を作らない
@@ -708,6 +783,7 @@ function drawCard(
   ctx.restore();
 
   drawParticles(ctx, scene, time);
+  drawImpactBurst(ctx, scene, timeline, time);
   drawFlash(ctx, scene, transform.impact);
 
   ctx.restore();

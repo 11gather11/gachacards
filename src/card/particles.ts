@@ -128,7 +128,7 @@ export function createParticles(
     if (kind === "spark") {
       // カード面のどこかから四方へ飛ばす。半分は登場直後に集中させて「弾けた」感を出す
       const angle = randomBetween(rng, 0, Math.PI * 2);
-      const speed = randomBetween(rng, span * 0.18, span * 0.55);
+      const speed = randomBetween(rng, span * 0.3, span * 0.85);
       const early = i < count * 0.5;
       particles.push({
         ...shared,
@@ -151,7 +151,7 @@ export function createParticles(
     const isBlast = i < count * 0.7;
     const angle = randomBetween(rng, 0, Math.PI * 2);
     if (isBlast) {
-      const speed = randomBetween(rng, span * 0.4, span * 1.1);
+      const speed = randomBetween(rng, span * 0.55, span * 1.5);
       particles.push({
         ...shared,
         birth: startAt + randomBetween(rng, 0, 0.12),
