@@ -730,7 +730,9 @@ export function renderFrameBlurred(
     for (let i = 0; i < blur.samples; i++) {
       layer.ctx.clearRect(0, 0, scene.width, scene.height)
       renderFrame(layer.ctx, time + (i / blur.samples) * span, scene)
-      ctx.drawImage(layer.canvas, 0, 0)
+      // 1/N に落とすときの丸め誤差が行ごとに揃うと、暗い面に横縞として出る。
+      // サンプルごとに半ピクセル未満ずらして重ね、誤差を空間的に散らす
+      ctx.drawImage(layer.canvas, ((i % 2) - 0.5) * 0.5, ((((i / 2) | 0) % 2) - 0.5) * 0.5)
     }
     ctx.restore()
   }
