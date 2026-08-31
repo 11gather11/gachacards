@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS: Settings = {
   subtitle: "",
   duration: 4,
   fps: 30,
-  introMode: "promote",
+  introMode: "on",
   // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする
   orientation: "landscape",
   sizeId: "md",
@@ -67,7 +67,13 @@ export function loadSettings(): Settings {
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw) as Partial<Settings>;
     // 保存後にキーが増えても壊れないよう、既定値の上に読めた分だけ重ねる
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      // 以前は "none" / "promote" / "fake" を保存していた。
+      // 演出の種類は無くなったので、出すか出さないかだけを引き継ぐ
+      introMode: parsed.introMode === "off" ? "off" : "on",
+    };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

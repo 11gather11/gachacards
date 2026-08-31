@@ -7,7 +7,7 @@ import type { IntroMode } from "./card/intro.ts";
 import { buildIntroStages, computeIntroDuration, createIntroParticles } from "./card/intro.ts";
 import { createParticles } from "./card/particles.ts";
 import type { RarityId } from "./card/rarity.ts";
-import { getRarity } from "./card/rarity.ts";
+import { RARITY_PRESETS, getRarity } from "./card/rarity.ts";
 import type { CardScene } from "./card/render.ts";
 import { computeCardSize, computeTimeline } from "./card/render.ts";
 import { canExportTransparentWebm, exportWebm } from "./export/webm.ts";
@@ -116,16 +116,18 @@ export function App() {
   const rarity = getRarity(rarityId);
   // null は「上書きしていない」の意味なので、レアリティ側の既定値に落とす
   const effectiveBadge = badge ?? rarity.badge;
+  // 上位ほど通る段数が多く、そのぶん前振りが長くなる
+  const introDuration = computeIntroDuration(rarity, duration, introMode === "on");
+  const promotionCount = RARITY_PRESETS.findIndex((preset) => preset.id === rarityId);
 
   const scene = useMemo<CardScene>(() => {
     const card = computeCardSize(size.width, size.height);
-    const introDuration = computeIntroDuration(duration, introMode !== "off");
     const timeline = computeTimeline(duration, loop, introDuration);
     const intro =
       introMode === "off"
         ? null
         : {
-            stages: buildIntroStages(rarity, introMode, seed),
+            stages: buildIntroStages(rarity),
             particles: createIntroParticles(64, seed),
           };
     const particles = createParticles(
@@ -156,7 +158,19 @@ export function App() {
       introDuration,
       loop,
     };
-  }, [size, rarity, effectiveBadge, artwork, title, subtitle, duration, introMode, loop, seed]);
+  }, [
+    size,
+    rarity,
+    effectiveBadge,
+    artwork,
+    title,
+    subtitle,
+    duration,
+    introMode,
+    introDuration,
+    loop,
+    seed,
+  ]);
 
   const handleExport = async () => {
     setError(null);
@@ -271,20 +285,23 @@ export function App() {
         </section>
 
         <section className="field">
-          <label className="field__label" htmlFor="intro">
-            入りの演出
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={introMode === "on"}
+              onChange={(event) => setIntroMode(event.target.checked ? "on" : "off")}
+            />
+            入りの演出（光が集まって弾ける）
           </label>
-          <select
-            id="intro"
-            className="input"
-            value={introMode}
-            onChange={(event) => setIntroMode(event.target.value as IntroMode)}
-          >
-            <option value="off">なし（すぐカードが出る）</option>
-            <option value="none">光の収束（色は最初から確定）</option>
-            <option value="promote">光の収束 + 昇格（下位色から上がる）</option>
-            <option value="fake">光の収束 + 昇格 + 裏切り（ガセ落ちあり）</option>
-          </select>
+          {introMode === "on" && (
+            <p className="notice">
+              {promotionCount > 0
+                ? `白 → ${rarity.label} まで ${promotionCount} 段上がる`
+                : "白のまま（昇格なし）"}
+              {" / "}
+              {introDuration.toFixed(2)} 秒
+            </p>
+          )}
         </section>
 
         <section className="field field--row">

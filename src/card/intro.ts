@@ -2,10 +2,11 @@
  * カードが出る前の共通演出。
  *
  * 光が中心に集まり、膨らんで、弾けた瞬間にカードが出る。ここまではどのレアリティでも
- * 同じ動きで、違うのは「光の色」だけ。集まっている最中に色が上がっていくことで、
- * パチンコの保留変化と同じ「色が変わった瞬間にアツくなる」を作る。
+ * 同じ動きで、違うのは「光の色」だけ。
  *
- * 色の段取り（昇格・ガセ落ち）は seed から決まるので、同じ seed なら毎回同じ演出になる。
+ * 光は必ず白から始まり、そこから本来のレアリティまで保留カラーを 1 段ずつ上がっていく。
+ * パチンコの保留変化と同じ「色が変わった瞬間にアツくなる」を、段数のぶんだけ繰り返す。
+ * 上位のレアリティほど通る段数が多く、そのぶん演出も長くなる。
  */
 
 import { createRng, easeOutCubic, progress, pulse, randomBetween } from "./math.ts";
@@ -13,25 +14,14 @@ import type { RarityPreset } from "./rarity.ts";
 import { RARITY_PRESETS } from "./rarity.ts";
 import type { Canvas2dContext } from "./render.ts";
 
-/** 入りの演出で色をどう動かすか。 */
-export type PromotionMode =
-  /** 最初からレアリティの色。色では何も引っ張らない */
-  | "none"
-  /** 下位の色から始めて、段階的に本来の色まで上げる */
-  | "promote"
-  /** 昇格に加えて、本来より上の色を一瞬だけ見せてから落とす（ガセ） */
-  | "fake";
-
 /** UI から選ぶ入り演出の設定。`"off"` なら演出そのものを出さない。 */
-export type IntroMode = "off" | PromotionMode;
+export type IntroMode = "off" | "on";
 
 /** 光の色が切り替わる 1 段階。 */
 export interface IntroStage {
   /** 入り演出を 0-1 に正規化した時刻。この時刻からこの色になる。 */
   at: number;
   rarity: RarityPreset;
-  /** 本来より上の色を一瞬見せているだけの段階なら `true`。 */
-  fake: boolean;
 }
 
 /** 中心へ吸い込まれていく光の粒。位置は時刻から直接求める。 */
@@ -58,66 +48,67 @@ export interface IntroConfig {
 }
 
 /**
+ * 白から目的のレアリティまで、何段上がるかを返す。白なら 0。
+ */
+function countPromotions(target: RarityPreset): number {
+  return Math.max(
+    0,
+    RARITY_PRESETS.findIndex((preset) => preset.id === target.id),
+  );
+}
+
+/**
  * 入り演出の長さを決める。
  *
+ * 白から本来の色まで 1 段ずつ上がるので、上位のレアリティほど通る段数が多い。
+ * 段数に比例して長さを伸ばし、上位ほど長く引っ張られるようにしている。
+ *
+ * @param target - 最終的に落ち着くレアリティ
  * @param duration - 全体の尺（秒）
  * @param enabled - 入り演出を出すかどうか
  * @returns 入り演出の長さ（秒）。無効なら 0
+ *
+ * @example
+ * computeIntroDuration(getRarity("white"), 4, true);   // => 0.55（昇格なし）
+ * computeIntroDuration(getRarity("rainbow"), 4, true); // => 1.8（5 段上がる）
  */
-export function computeIntroDuration(duration: number, enabled: boolean): number {
+export function computeIntroDuration(
+  target: RarityPreset,
+  duration: number,
+  enabled: boolean,
+): number {
   if (!enabled) return 0;
-  // 長い尺でも溜めすぎると間延びするので上限を置き、短い尺では比率で縮める
-  return Math.min(1.3, duration * 0.35);
+  const wanted = 0.55 + countPromotions(target) * 0.25;
+  // 尺の半分近くを前振りに使うとカードを見せる時間が残らないので頭打ちにする
+  return Math.min(wanted, duration * 0.45);
 }
 
 /**
  * 色の段取りを組み立てる。
  *
- * `promote` では本来の色より下から始めて段階的に上げ、`fake` ではその途中に
- * 「本来より上の色が一瞬出て、すぐ落ちる」段階を挟む。
+ * 光は必ず白から始まり、保留カラーを 1 段ずつ上がって本来の色に着地する。
+ * 段数はレアリティだけで決まるので、同じレアリティなら毎回同じ段取りになる。
  *
  * @param target - 最終的に落ち着くレアリティ
- * @param mode - 色の動かし方
- * @param seed - 乱数シード。段数とガセの有無がこれで決まる
- * @returns `at` の昇順に並んだ段階の配列。先頭は必ず 0 から始まる
+ * @returns `at` の昇順に並んだ段階の配列。先頭は必ず白（`at` は 0）
  *
  * @example
- * // 金 + promote なら 緑 → 赤 → 金 のように上がっていく
- * buildIntroStages(getRarity("gold"), "promote", 1);
+ * // 金なら 白 → 青 → 緑 → 赤 → 金 と 4 段上がる
+ * buildIntroStages(getRarity("gold"));
  */
-export function buildIntroStages(
-  target: RarityPreset,
-  mode: PromotionMode,
-  seed: number,
-): IntroStage[] {
-  const targetIndex = RARITY_PRESETS.findIndex((preset) => preset.id === target.id);
-  const finalStage: IntroStage = { at: 0, rarity: target, fake: false };
-  if (mode === "none" || targetIndex <= 0) return [finalStage];
+export function buildIntroStages(target: RarityPreset): IntroStage[] {
+  const steps = countPromotions(target);
+  if (steps === 0) return [{ at: 0, rarity: target }];
 
-  const rng = createRng(seed ^ 0x5eed);
-  // 何段下から始めるか。最大 2 段だが、下位レアリティでは白より下に行けない
-  const climb = Math.min(targetIndex, 1 + Math.floor(rng() * 2));
   const stages: IntroStage[] = [];
-
-  // 昇格は後半に寄せる。前半で上がりきると、溜めの間ずっと同じ色になって間延びする
-  for (let step = 0; step <= climb; step++) {
+  for (let step = 0; step <= steps; step++) {
     stages.push({
-      at: step === 0 ? 0 : 0.3 + (0.5 * (step - 1)) / Math.max(1, climb - 1 || 1),
-      rarity: RARITY_PRESETS[targetIndex - climb + step]!,
-      fake: false,
+      // 白をひと呼吸見せてから上げ始め、最後の色は弾ける前に必ず出しておく。
+      // 段数が変わっても着地の時刻は動かないので、尺の詰まり方が一定になる
+      at: step === 0 ? 0 : 0.2 + (0.55 * step) / steps,
+      rarity: RARITY_PRESETS[step]!,
     });
   }
-
-  // ガセは「本来より上の色が一瞬出て、弾ける直前に落ちる」。
-  // 本来が最上位なら上がないので、代わりに一段落として見せる
-  if (mode === "fake" && rng() < 0.55) {
-    const isTop = targetIndex >= RARITY_PRESETS.length - 1;
-    const teaser = RARITY_PRESETS[isTop ? targetIndex - 1 : targetIndex + 1]!;
-    stages.push({ at: 0.68, rarity: teaser, fake: true });
-    stages.push({ at: 0.82, rarity: target, fake: false });
-  }
-
-  stages.sort((a, b) => a.at - b.at);
   return stages;
 }
 
@@ -181,6 +172,27 @@ interface IntroFrame {
 }
 
 /**
+ * その段階で使う光の色を返す。
+ *
+ * 虹だけは単色で表せないうえ、`glowColor` が白なので、そのまま使うと
+ * 始点の白と見分けがつかない。虹の間だけ枠色を素早く巡回させて虹らしく光らせる。
+ *
+ * @param stage - 現在の段階
+ * @param p - 入り演出内の正規化時刻（0-1）
+ * @returns 光の主色と、放射光に使う濃いめの色
+ */
+function stageColors(stage: IntroStage, p: number): { color: string; accent: string } {
+  const { rarity } = stage;
+  if (!rarity.rainbowFrame) {
+    return { color: rarity.glowColor, accent: rarity.frameColors[1] ?? rarity.glowColor };
+  }
+
+  const colors = rarity.frameColors;
+  const index = Math.floor(p * 40) % colors.length;
+  return { color: colors[index]!, accent: colors[(index + 2) % colors.length]! };
+}
+
+/**
  * 縁のぼやけたリングを描く。
  *
  * ストロークで描くと線が硬く、光ではなく輪郭線に見えてしまうため、
@@ -238,8 +250,7 @@ export function drawIntro(
   if (p <= 0 || p >= 1) return;
 
   const stage = currentStage(intro.stages, p);
-  const color = stage.rarity.glowColor;
-  const accent = stage.rarity.frameColors[1] ?? color;
+  const { color, accent } = stageColors(stage, p);
   const unit = Math.min(frame.width, frame.height);
   // ここを超えるとフレーム端で光が切られる
   const maxRadius = unit * 0.46;
@@ -341,7 +352,7 @@ export function drawIntro(
       maxRadius * (0.15 + 0.5 * easeOutCubic(1 - promotion)),
       unit * 0.02 * promotion,
       "#ffffff",
-      promotion * promotion * (stage.fake ? 0.4 : 0.7),
+      promotion * promotion * 0.7,
     );
   }
 
