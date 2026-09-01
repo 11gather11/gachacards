@@ -30,6 +30,13 @@ export interface CardScene {
   imageWidth: number
   /** アートワークの元高さ（px）。 */
   imageHeight: number
+  /**
+   * アートワークのどこを枠の中央に置くか。0 が左端／上端、1 が右端／下端、
+   * 0.5 で中央。縦横比が枠と違うと必ずどちらかがはみ出すので、その切り落とし
+   * 位置を決める。顔が上寄りの写真なら小さくする。
+   */
+  focusX: number
+  focusY: number
   rarity: RarityPreset
   /** カード左上のランク表記。空文字ならバッジごと描かない。 */
   badge: string

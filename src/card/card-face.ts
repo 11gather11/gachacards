@@ -10,7 +10,7 @@
 
 import type { Canvas2dContext } from './compositing.ts'
 import { acquireGlowLayer } from './compositing.ts'
-import { progress, pulse } from './math.ts'
+import { clamp, progress, pulse } from './math.ts'
 import type { CardBox, CardScene, CardTransform, Timeline } from './scene.ts'
 
 /** 虹のグローを枠色で染める強さ。1 で純色、0 で白のまま。 */
@@ -265,10 +265,13 @@ function drawArtwork(
   const scale = Math.max(width / scene.imageWidth, height / scene.imageHeight)
   const drawWidth = scene.imageWidth * scale
   const drawHeight = scene.imageHeight * scale
+  // はみ出したぶんをどちら側に寄せるか。0.5 なら中央で、これまでと同じ。
+  // 縦長の写真を横長のカードに入れると上下が切れるので、顔の位置に合わせて
+  // ずらせるようにしている
   ctx.drawImage(
     scene.image,
-    x + (width - drawWidth) / 2,
-    y + (height - drawHeight) / 2,
+    x + (width - drawWidth) * clamp(scene.focusX, 0, 1),
+    y + (height - drawHeight) * clamp(scene.focusY, 0, 1),
     drawWidth,
     drawHeight,
   )

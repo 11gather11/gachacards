@@ -11,6 +11,7 @@ import { createParticles } from './card/particles.ts'
 import { getRarity } from './card/rarity.ts'
 import type { CardScene } from './card/scene.ts'
 import { computeCardSize, computeTimeline } from './card/scene.ts'
+import { ArtworkFocus } from './components/ArtworkFocus.tsx'
 import { CardFields } from './components/CardFields.tsx'
 import { ImageDropZone } from './components/ImageDropZone.tsx'
 import { IntroFields } from './components/IntroFields.tsx'
@@ -207,6 +208,8 @@ export function App() {
     qualityId,
     loop,
     seed,
+    focusX,
+    focusY,
   } = settings
 
   const [background, setBackground] = useState<PreviewBackground>('checker')
@@ -248,13 +251,14 @@ export function App() {
   const introDuration = computeIntroDuration(introSeconds, duration, introMode === 'on')
   // 尺を伸ばすとファイルがどれだけ膨らむかを、書き出す前に見せる
   const estimatedSizeMb = (quality.bitrate * duration) / 8 / 1024 / 1024
+  // 切り取り位置のつまみを出すかの判断にも使うので、ここで出しておく
+  const card = useMemo(() => computeCardSize(size.width, size.height), [size])
   // 段取りは表示にも使うので、シーンと同じものをここで組み立てて共有する
   const introStages = useMemo(() => buildIntroStages(rarity, via), [rarity, via])
   // 白と目的の色は必ず通るので、選べるのはその間の色だけ
   const intermediates = listIntermediateRarities(rarity)
 
   const scene = useMemo<CardScene>(() => {
-    const card = computeCardSize(size.width, size.height)
     const timeline = computeTimeline(duration, loop, introDuration)
     const intro =
       introMode === 'off'
@@ -281,6 +285,8 @@ export function App() {
       image: artwork?.bitmap ?? null,
       imageWidth: artwork?.width ?? 0,
       imageHeight: artwork?.height ?? 0,
+      focusX,
+      focusY,
       rarity,
       badge: effectiveBadge,
       title,
@@ -301,9 +307,12 @@ export function App() {
     duration,
     introMode,
     introDuration,
+    card,
     introStages,
     loop,
     seed,
+    focusX,
+    focusY,
   ])
 
   const handleExport = async () => {
@@ -354,6 +363,16 @@ export function App() {
         <section {...stylex.props(ui.field)}>
           <span {...stylex.props(ui.label)}>アートワーク</span>
           <ImageDropZone artwork={artwork} onSelect={setArtwork} onError={setError} />
+          {artwork && (
+            <ArtworkFocus
+              settings={settings}
+              update={update}
+              imageWidth={artwork.width}
+              imageHeight={artwork.height}
+              frameWidth={card.width}
+              frameHeight={card.height}
+            />
+          )}
         </section>
 
         <section {...stylex.props(ui.field)}>

@@ -40,6 +40,9 @@ export interface Settings {
   loop: boolean
   /** パーティクル配置を決めるシード。 */
   seed: number
+  /** アートワークのどこを枠の中央に置くか。0〜1、0.5 で中央。 */
+  focusX: number
+  focusY: number
 }
 
 const STORAGE_KEY = 'card-alert-maker:settings'
@@ -65,6 +68,9 @@ export const DEFAULT_SETTINGS: Settings = {
   qualityId: 'mid',
   loop: false,
   seed: 1,
+  // 中央合わせ。これまでと同じ見え方
+  focusX: 0.5,
+  focusY: 0.5,
 }
 
 /**

@@ -33,7 +33,7 @@ const TEST_SEED = 12345
  * const scene = buildTestScene('gold')
  * renderFrameBlurred(ctx, 4, scene, null)
  */
-function buildTestScene(rarityId: RarityId): CardScene {
+export function buildTestScene(rarityId: RarityId): CardScene {
   const rarity = getRarity(rarityId)
   const card = computeCardSize(TEST_FRAME.width, TEST_FRAME.height)
   const timeline = computeTimeline(TEST_DURATION, false, TEST_INTRO)
@@ -69,6 +69,9 @@ function buildTestScene(rarityId: RarityId): CardScene {
     },
     introDuration: TEST_INTRO,
     loop: false,
+    // アートワークを入れないので切り取りは起きないが、既定値で埋めておく
+    focusX: 0.5,
+    focusY: 0.5,
   }
 }
 

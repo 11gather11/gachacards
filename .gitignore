@@ -33,3 +33,6 @@ dist-ssr
 
 # vitest がテスト失敗時に残すスクリーンショット
 __screenshots__
+
+# vitest がテスト失敗時に残す添付
+.vitest-attachments
