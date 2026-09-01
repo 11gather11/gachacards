@@ -277,9 +277,38 @@ Vite+ を使っている。詳細は `CLAUDE.md` を参照。
 
 ```bash
 pnpm exec vp check --fix   # format + lint + 型チェック
+pnpm exec vp test run      # テスト（実物の Chromium を立ち上げる）
 pnpm exec vp run knip      # どこからも使われていない export を探す
 pnpm build                 # 本番ビルド
 ```
+
+`vp check` は型が通るかしか見ないので、使われなくなった export はそのまま残る。
+knip はそれを見つける。pre-push フックでは 4 つとも走らせている。
+
+### テスト
+
+カードの描画は OffscreenCanvas・float16 キャンバス・コニックグラデーション・
+canvas の blur フィルタに依存していて、どれも Node には無い。そのため
+Vitest のブラウザモードで、実物の Chromium（Playwright）の中で走らせている。
+初回だけ `pnpm exec playwright install chromium` が要る。
+
+`src/card/render.test.ts` は、全レアリティ × 5 つの時刻で 1 フレーム描き、
+その**指紋**を snapshot に残す。ピクセルをそのままハッシュにすると
+ラスタライザの 1 段の違いで落ちてしまうので、画面を 12×9 の格子に割って
+アルファと色の平均を 16 段階に丸めたものを並べている。
+
+```
+000000000000|002578875200
+002455554200|06abbbbbba60
+02aeffffea20|2a97676669a2
+```
+
+左がアルファ、右が色。目で見てカードの形が分かるので、落ちたときに
+どこが変わったのかが読める。グローの色を 0.70 から 0.72 に変えるだけで
+3 つの snapshot が落ちる程度には効いている。
+
+`src/card/scene.test.ts` のほうは絵を描かない部分（寸法・タイムライン・
+色の段取り・粒の再現性）で、「どうあるべきか」を書いてある。
 
 `vp check` は型が通るかしか見ないので、使われなくなった export はそのまま残る。
 knip はそれを見つける。pre-push フックでも走らせている。

@@ -1,6 +1,7 @@
 import stylex from '@stylexjs/unplugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite-plus'
+import { playwright } from 'vite-plus/test/browser-playwright'
 
 export default defineConfig(({ mode }) => ({
   // StyleX はビルド時に静的 CSS へ畳む。react より先に置く必要がある。
@@ -13,6 +14,18 @@ export default defineConfig(({ mode }) => ({
     }),
     react(),
   ],
+  // カードの描画は OffscreenCanvas・float16 キャンバス・コニックグラデーション・
+  // canvas の blur フィルタに依存している。どれも Node には無いので、
+  // テストは実物の Chromium の中で走らせる
+  test: {
+    include: ['src/**/*.test.ts'],
+    browser: {
+      enabled: true,
+      provider: playwright(),
+      headless: true,
+      instances: [{ browser: 'chromium' }],
+    },
+  },
   staged: {
     '*': 'vp check --fix',
   },

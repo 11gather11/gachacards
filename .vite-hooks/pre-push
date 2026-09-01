@@ -8,9 +8,13 @@
 # knip は「どこからも使われていない export」を見つける。型チェックは通るので
 # lint では拾えず、放っておくと消し忘れたコードが残り続ける。
 #
+# テストは実物の Chromium を立ち上げるので 20 秒ほどかかる。それでもここで
+# 走らせるのは、描画の指紋がリファクタの唯一の安全網だから。
+#
 # 急いで push したいときは `git push --no-verify` で飛ばせる。
 set -e
 
 vp check
 vp run knip
+vp test run
 vp run build
