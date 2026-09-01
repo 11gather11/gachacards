@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <title>Card Alert Maker</title>
+  <title>GachaCards</title>
   <!--
     16x16 まで縮むので、要素はカードの枠だけに絞る。中身を描くと潰れて
     ただの四角になる。虹の枠がこのアプリの見分けなので、そこだけ残す。

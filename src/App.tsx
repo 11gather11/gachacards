@@ -356,7 +356,7 @@ export function App() {
     <div {...stylex.props(styles.app)}>
       <aside {...stylex.props(styles.panel)}>
         <header>
-          <h1 {...stylex.props(styles.title)}>Card Alert Maker</h1>
+          <h1 {...stylex.props(styles.title)}>GachaCards</h1>
           <p {...stylex.props(styles.subtitle)}>画像から、透過 WebM のカード演出を作る</p>
         </header>
 

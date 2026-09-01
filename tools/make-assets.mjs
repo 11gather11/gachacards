@@ -55,7 +55,7 @@ async function renderOgImage(page, origin) {
         imageHeight: 0,
         rarity: preset,
         badge: preset.badge,
-        title: 'Card Alert Maker',
+        title: 'GachaCards',
         subtitle: '画像から、透過 WebM のカード演出を作る',
         duration: 8,
         particles: particles.createParticles(

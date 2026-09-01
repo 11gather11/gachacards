@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { DEFAULT_SETTINGS, drawSeed, loadSettings, saveSettings } from './settings.ts'
 
-const STORAGE_KEY = 'card-alert-maker:settings'
+const STORAGE_KEY = 'gachacards:settings'
 
 afterEach(() => {
   localStorage.removeItem(STORAGE_KEY)

@@ -45,7 +45,7 @@ export interface Settings {
   focusY: number
 }
 
-const STORAGE_KEY = 'card-alert-maker:settings'
+const STORAGE_KEY = 'gachacards:settings'
 
 /** 何も保存されていないときに使う初期設定。 */
 export const DEFAULT_SETTINGS: Settings = {

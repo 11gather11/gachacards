@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "card-alert-maker",
+  "name": "gachacards",
   "compatibility_date": "2026-09-01",
 
   // 静的アセットだけの Worker。main を書かないと、リクエストは

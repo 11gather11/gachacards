@@ -1,4 +1,4 @@
-# Card Alert Maker
+# GachaCards
 
 画像を 1 枚入れると、レアリティ演出つきのカードが動く**透過 WebM** を書き出すブラウザアプリ。
 Streamlabs のアラート画像として使うことを想定している。
