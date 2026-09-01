@@ -386,17 +386,20 @@ export function drawIntro(
   // 中心の十字フレア。レンズフレアのように長く伸ばして光の強さを誇張する。
   // 溜めの途中で grow が 1 に飽和するため、ここを時間で揺らさないと、
   // 回り続ける放射光の中で十字だけが止まって見える。
-  // 回すと十字の形が崩れるので、向きは固定したまま大きさで動かす
-  // 長さと明るさを同じ位相で振る。ずらすと伸びと光が噛み合わず、
-  // 息をしているようには見えない
-  const flareBeat = Math.sin(time * 7)
-  const flareLength = Math.min(
-    maxRadius,
-    maxRadius * (0.5 + 0.5 * easeOutCubic(grow)) * (1 + 0.5 * burst) * (1 + 0.34 * flareBeat),
-  )
+  // 回すと十字の形が崩れるので、向きは固定したまま大きさで動かす。
+  //
+  // 基準を maxRadius いっぱいに取ると、揺れの山が毎回上限で頭打ちになり、
+  // 伸びきったまま止まって見える。伸びしろを残して 6 割強を基準にする
+  const flareBase = maxRadius * 0.62 * (0.5 + 0.5 * easeOutCubic(grow)) * (1 + 0.5 * burst)
   ctx.save()
-  ctx.globalAlpha = 0.55 * grow * (1 - burst * 0.3) * (0.8 + 0.2 * flareBeat)
   for (const angle of [0, Math.PI / 2]) {
+    // 縦横で位相を反転させる。横が伸びるときに縦が縮むので、
+    // 向きは変わらないまま形が動く
+    const flareBeat = Math.sin(time * 7) * (angle === 0 ? 1 : -1)
+    // 長さと明るさを同じ位相で振る。ずらすと伸びと光が噛み合わず、
+    // 息をしているようには見えない
+    const flareLength = Math.min(maxRadius, flareBase * (1 + 0.45 * flareBeat))
+    ctx.globalAlpha = 0.55 * grow * (1 - burst * 0.3) * (0.75 + 0.25 * flareBeat)
     const fx = Math.cos(angle) * flareLength
     const fy = Math.sin(angle) * flareLength
     const flare = ctx.createLinearGradient(-fx, -fy, fx, fy)
