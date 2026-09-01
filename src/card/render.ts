@@ -835,22 +835,60 @@ function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): vo
  * @param width - フレームの幅（px）
  * @param height - フレームの高さ（px）
  */
+/**
+ * 縁のマスクの丸み。2 でちょうど楕円、大きくするほど矩形に近づく。
+ *
+ * 矩形で切ると、直角の内側だけ縦横のフェードが掛け算になって急に落ちる。
+ * 等高線もそこで直角に折れるので、丸いグローの中に四角い縁が浮き出てしまう。
+ * 楕円寄りにしておくと落ち方が全周でそろい、縁が見えなくなる。
+ */
+const MASK_POWER = 2.5
+
+/** マスクの輪郭を近似する線分の数。ぼかしが乗るのでこの粗さで足りる。 */
+const MASK_STEPS = 96
+
+/**
+ * 超楕円のパスを引く。`power` が 2 なら楕円、大きくするほど角が立つ。
+ *
+ * @param ctx - 描画先
+ * @param cx - 中心の x 座標（px）
+ * @param cy - 中心の y 座標（px）
+ * @param rx - x 方向の半径（px）
+ * @param ry - y 方向の半径（px）
+ * @param power - 丸みの指数。既定は {@link MASK_POWER}
+ */
+function superellipsePath(
+  ctx: Canvas2dContext,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  power: number = MASK_POWER,
+): void {
+  ctx.beginPath()
+  for (let i = 0; i <= MASK_STEPS; i++) {
+    const angle = (i / MASK_STEPS) * Math.PI * 2
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    // |cos t|^(2/n) に符号を戻したものが超楕円の媒介変数表示。n = 2 で楕円に戻る
+    const x = cx + rx * Math.sign(cos) * Math.abs(cos) ** (2 / power)
+    const y = cy + ry * Math.sign(sin) * Math.abs(sin) ** (2 / power)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+}
+
 function fadeFrameEdges(ctx: Canvas2dContext, width: number, height: number): void {
   // 幅を取りすぎると光が届く前に落ちてしまうので、端ぎりぎりまで寄せる。
   // ぼかしは幅の半分。canvas の blur(r) は 1.5r ほどで消えるため、
   // 矩形の縁から外へ 0.75 * fade で 0 になり、端まで余裕が残る
   const fade = Math.min(width, height) * 0.03
-  // 角を丸めずに矩形で切ると、直角の内側だけ縦横のフェードが掛け算になって
-  // 急に落ちる。等高線もそこで直角に折れるので、丸いグローの中に四角い縁が
-  // 浮き出てしまう。グローの等高線と同じくらいの曲率まで丸めておくと、
-  // 落ち方が全周でそろって縁が見えなくなる
-  const radius = Math.min(width, height) * 0.14
   ctx.save()
   ctx.globalCompositeOperation = 'destination-in'
   ctx.filter = `blur(${fade / 2}px)`
   ctx.fillStyle = '#000'
-  ctx.beginPath()
-  ctx.roundRect(fade, fade, width - fade * 2, height - fade * 2, radius)
+  superellipsePath(ctx, width / 2, height / 2, width / 2 - fade, height / 2 - fade)
   ctx.fill()
   ctx.restore()
 }
