@@ -1,3 +1,4 @@
+import { Button, CheckboxInput, NumberInput, Selector } from '@astryxdesign/core'
 import * as stylex from '@stylexjs/stylex'
 
 import type { Settings } from '../settings.ts'
@@ -20,6 +21,34 @@ const MOTION_BLUR_OPTIONS = [
   { samples: 8, label: '強 (8x)' },
 ] as const
 
+const styles = stylex.create({
+  /**
+   * 向きとサイズは縦に積む。Astryx はラベルを欄の上に出すので、
+   * 横に 2 つ並べると「標準（アラート向け）(800×600)」が入りきらない
+   */
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  /** 3 つ並べる行。 */
+  trio: {
+    display: 'flex',
+    gap: 8,
+  },
+  /** 並びの中で均等に伸ばす。 */
+  cell: {
+    flex: 1,
+    minWidth: 0,
+  },
+  /** 入力欄と、その右に付く小さなボタン。 */
+  seed: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+})
+
 interface OutputFieldsProps {
   settings: Settings
   update: UpdateSetting
@@ -31,119 +60,92 @@ export function OutputFields({ settings, update }: OutputFieldsProps) {
 
   return (
     <>
-      <section {...stylex.props(ui.field, ui.fieldRow)}>
-        <label {...stylex.props(ui.fieldSub)}>
-          <span {...stylex.props(ui.label)}>向き</span>
-          <select
-            {...stylex.props(ui.input)}
+      <section {...stylex.props(ui.field)}>
+        <div {...stylex.props(styles.stack)}>
+          <Selector
+            label="向き"
             value={orientation}
-            onChange={(event) => {
-              if (isOrientation(event.target.value)) update('orientation', event.target.value)
+            options={[
+              { value: 'landscape', label: '横長' },
+              { value: 'portrait', label: '縦長' },
+            ]}
+            onChange={(value) => {
+              if (isOrientation(value)) update('orientation', value)
             }}
-          >
-            <option value="landscape">横長</option>
-            <option value="portrait">縦長</option>
-          </select>
-        </label>
-        <label {...stylex.props(ui.fieldSub)}>
-          <span {...stylex.props(ui.label)}>サイズ</span>
-          <select
-            {...stylex.props(ui.input)}
+            xstyle={styles.cell}
+          />
+          <Selector
+            label="サイズ"
             value={sizeId}
-            onChange={(event) => update('sizeId', event.target.value)}
-          >
-            {SIZE_PRESETS.map((preset) => {
+            options={SIZE_PRESETS.map((preset) => {
               const frame = resolveFrameSize(preset, orientation)
-              return (
-                <option key={preset.id} value={preset.id}>
-                  {preset.label} ({frame.width}×{frame.height})
-                </option>
-              )
+              return { value: preset.id, label: `${preset.label} (${frame.width}×${frame.height})` }
             })}
-          </select>
-        </label>
-      </section>
-
-      <section {...stylex.props(ui.field, ui.fieldRow)}>
-        <label {...stylex.props(ui.fieldSub)}>
-          <span {...stylex.props(ui.label)}>fps</span>
-          <select
-            {...stylex.props(ui.input)}
-            value={fps}
-            onChange={(event) => update('fps', Number(event.target.value))}
-          >
-            {FPS_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label {...stylex.props(ui.fieldSub)}>
-          <span {...stylex.props(ui.label)}>ブラー</span>
-          <select
-            {...stylex.props(ui.input)}
-            value={motionBlur}
-            onChange={(event) => update('motionBlur', Number(event.target.value))}
-          >
-            {MOTION_BLUR_OPTIONS.map((option) => (
-              <option key={option.samples} value={option.samples}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label {...stylex.props(ui.fieldSub)}>
-          <span {...stylex.props(ui.label)}>画質</span>
-          <select
-            {...stylex.props(ui.input)}
-            value={qualityId}
-            onChange={(event) => update('qualityId', event.target.value)}
-          >
-            {QUALITY_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
-
-      <section {...stylex.props(ui.field, ui.fieldRow)}>
-        <label {...stylex.props(ui.fieldSub)}>
-          <span {...stylex.props(ui.label)}>パーティクルの種</span>
-          <div {...stylex.props(ui.inputRow)}>
-            <input
-              type="number"
-              {...stylex.props(ui.input)}
-              value={seed}
-              min={0}
-              step={1}
-              onChange={(event) =>
-                update('seed', Math.max(0, Math.floor(Number(event.target.value) || 0)))
-              }
-            />
-            <button
-              type="button"
-              {...stylex.props(ui.button)}
-              title="別の配置を引き直す"
-              onClick={() => update('seed', drawSeed())}
-            >
-              🎲
-            </button>
-          </div>
-        </label>
+            onChange={(value) => update('sizeId', value)}
+            xstyle={styles.cell}
+          />
+        </div>
       </section>
 
       <section {...stylex.props(ui.field)}>
-        <label {...stylex.props(ui.checkbox)}>
-          <input
-            type="checkbox"
-            checked={loop}
-            onChange={(event) => update('loop', event.target.checked)}
+        <div {...stylex.props(styles.trio)}>
+          <Selector
+            label="fps"
+            value={String(fps)}
+            options={FPS_OPTIONS.map((value) => ({ value: String(value), label: String(value) }))}
+            onChange={(value) => update('fps', Number(value))}
+            xstyle={styles.cell}
           />
-          ループ用（最後のフェードアウトを省く）
-        </label>
+          <Selector
+            label="ブラー"
+            value={String(motionBlur)}
+            options={MOTION_BLUR_OPTIONS.map((option) => ({
+              value: String(option.samples),
+              label: option.label,
+            }))}
+            onChange={(value) => update('motionBlur', Number(value))}
+            xstyle={styles.cell}
+          />
+          <Selector
+            label="画質"
+            value={qualityId}
+            options={QUALITY_PRESETS.map((preset) => ({
+              value: preset.id,
+              label: preset.label,
+            }))}
+            onChange={(value) => update('qualityId', value)}
+            xstyle={styles.cell}
+          />
+        </div>
+      </section>
+
+      <section {...stylex.props(ui.field)}>
+        <div {...stylex.props(styles.seed)}>
+          <NumberInput
+            label="パーティクルの種"
+            description="同じ値なら同じ配置になる"
+            value={seed}
+            min={0}
+            step={1}
+            onChange={(value: number) => update('seed', Math.max(0, Math.floor(value || 0)))}
+            xstyle={styles.cell}
+          />
+          <Button
+            label="別の配置を引き直す"
+            variant="secondary"
+            isIconOnly
+            icon="🎲"
+            onClick={() => update('seed', drawSeed())}
+          />
+        </div>
+      </section>
+
+      <section {...stylex.props(ui.field)}>
+        <CheckboxInput
+          label="ループ用（最後のフェードアウトを省く）"
+          value={loop}
+          onChange={(checked) => update('loop', checked)}
+        />
       </section>
     </>
   )

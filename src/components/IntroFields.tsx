@@ -1,9 +1,9 @@
+import { Button, CheckboxInput, Slider, Text } from '@astryxdesign/core'
 import * as stylex from '@stylexjs/stylex'
 
 import type { IntroStage } from '../card/intro.ts'
 import type { RarityPreset } from '../card/rarity.ts'
 import type { Settings } from '../settings.ts'
-import { colors } from '../theme.stylex.ts'
 import { ui } from '../ui.ts'
 import type { UpdateSetting } from '../useSettings.ts'
 
@@ -13,12 +13,7 @@ const styles = stylex.create({
     display: 'flex',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 10,
-  },
-  /** 並びの中に置くぶん、チェックとラベルの間を詰める。 */
-  viaCheckbox: {
-    gap: 5,
-    color: colors.text,
+    gap: 12,
   },
 })
 
@@ -42,81 +37,75 @@ export function IntroFields({
   introStages,
 }: IntroFieldsProps) {
   const { introMode, introSeconds, via } = settings
+  // 尺に収まらず詰められたときだけ、実際の長さを添える
+  const isTrimmed = introDuration < introSeconds - 0.05
 
   return (
     <section {...stylex.props(ui.field)}>
-      <label {...stylex.props(ui.checkbox)}>
-        <input
-          type="checkbox"
-          checked={introMode === 'on'}
-          onChange={(event) => update('introMode', event.target.checked ? 'on' : 'off')}
-        />
-        入りの演出（光が集まって弾ける）
-      </label>
+      <CheckboxInput
+        label="入りの演出（光が集まって弾ける）"
+        value={introMode === 'on'}
+        onChange={(checked) => update('introMode', checked ? 'on' : 'off')}
+      />
       {introMode === 'on' && (
         <>
-          <label {...stylex.props(ui.label)} htmlFor="introSeconds">
-            入りの長さ: {introSeconds.toFixed(1)} 秒
-            {introDuration < introSeconds - 0.05 &&
-              `（尺に収まらないので ${introDuration.toFixed(1)} 秒に短縮）`}
-          </label>
-          <input
-            id="introSeconds"
-            type="range"
+          <Slider
+            label="入りの長さ"
+            description={
+              isTrimmed ? `尺に収まらないので ${introDuration.toFixed(1)} 秒に短縮` : undefined
+            }
             min={0.5}
             max={8}
             step={0.1}
             value={introSeconds}
-            onChange={(event) => update('introSeconds', Number(event.target.value))}
+            formatValue={(value) => `${value.toFixed(1)} 秒`}
+            valueDisplay="text"
+            onChange={(value: number) => update('introSeconds', value)}
           />
           {intermediates.length > 0 && (
             <>
-              <span {...stylex.props(ui.label)}>途中で通す色（外すと飛ばす）</span>
+              <Text size="sm" color="secondary" weight="semibold">
+                途中で通す色（外すと飛ばす）
+              </Text>
               <div {...stylex.props(styles.via)}>
                 {intermediates.map((preset) => (
-                  <label key={preset.id} {...stylex.props(ui.checkbox, styles.viaCheckbox)}>
-                    <input
-                      type="checkbox"
-                      checked={via.includes(preset.id)}
-                      onChange={(event) =>
-                        update(
-                          'via',
-                          event.target.checked
-                            ? [...via, preset.id]
-                            : via.filter((id) => id !== preset.id),
-                        )
-                      }
-                    />
-                    {preset.label}
-                  </label>
+                  <CheckboxInput
+                    key={preset.id}
+                    label={preset.label}
+                    value={via.includes(preset.id)}
+                    onChange={(checked) =>
+                      update(
+                        'via',
+                        checked ? [...via, preset.id] : via.filter((id) => id !== preset.id),
+                      )
+                    }
+                  />
                 ))}
-                <button
-                  type="button"
-                  {...stylex.props(ui.button, ui.buttonSlim)}
+                <Button
+                  label="全部"
+                  variant="secondary"
+                  size="sm"
                   onClick={() =>
                     update(
                       'via',
                       intermediates.map((preset) => preset.id),
                     )
                   }
-                >
-                  全部
-                </button>
-                <button
-                  type="button"
-                  {...stylex.props(ui.button, ui.buttonSlim)}
+                />
+                <Button
+                  label="一気に"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => update('via', [])}
-                >
-                  一気に
-                </button>
+                />
               </div>
             </>
           )}
-          <p {...stylex.props(ui.notice)}>
+          <Text size="sm" color="secondary">
             {introStages.map((stage) => stage.rarity.label).join(' → ')}
             {' / '}
             {introDuration.toFixed(2)} 秒
-          </p>
+          </Text>
         </>
       )}
     </section>

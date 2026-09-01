@@ -1,3 +1,4 @@
+import { Banner, Button } from '@astryxdesign/core'
 import * as stylex from '@stylexjs/stylex'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
@@ -398,44 +399,45 @@ export function App() {
         <OutputFields settings={settings} update={update} />
 
         <section {...stylex.props(ui.field)}>
-          <button
-            type="button"
-            {...stylex.props(ui.button, ui.buttonPrimary)}
+          <Button
+            label={
+              isExporting
+                ? `書き出し中 ${Math.round((progress ?? 0) * 100)}%`
+                : '透過 WebM を書き出す'
+            }
+            variant="primary"
+            width="100%"
+            isLoading={isExporting}
+            isDisabled={isExporting || isSupported === false}
             onClick={() => void handleExport()}
-            disabled={isExporting || isSupported === false}
-          >
-            {isExporting
-              ? `書き出し中 ${Math.round((progress ?? 0) * 100)}%`
-              : '透過 WebM を書き出す'}
-          </button>
+          />
           {isExporting && (
-            <button
-              type="button"
-              {...stylex.props(ui.button)}
+            <Button
+              label="中断"
+              variant="secondary"
+              width="100%"
               onClick={() => abortRef.current?.abort()}
-            >
-              中断
-            </button>
+            />
           )}
           {isSupported === false && (
-            <p {...stylex.props(ui.notice, ui.noticeError)}>
-              このブラウザは VP9 の書き出しに対応していません。パソコンの Chrome か Edge で
-              開いてください。iPhone・iPad では、Chrome や Edge も中身は Safari と同じ
-              仕組みなので、同じ端末でブラウザを変えても書き出せません。
-            </p>
+            <Banner
+              status="error"
+              title="このブラウザでは書き出せません"
+              description="VP9 の書き出しに対応していません。パソコンの Chrome か Edge で開いてください。iPhone・iPad では、Chrome や Edge も中身は Safari と同じ仕組みなので、同じ端末でブラウザを変えても書き出せません。"
+            />
           )}
-          {error && <p {...stylex.props(ui.notice, ui.noticeError)}>{error}</p>}
+          {error && <Banner status="error" title="書き出しに失敗しました" description={error} />}
         </section>
 
         <section {...stylex.props(ui.field)}>
-          <button
-            type="button"
-            {...stylex.props(ui.button, ui.buttonSlim)}
+          <Button
+            label={resetArmed ? 'もう一度押すと戻ります' : '↺ 設定を規定に戻す'}
+            variant="ghost"
+            size="sm"
+            width="100%"
+            isDisabled={isExporting}
             onClick={reset}
-            disabled={isExporting}
-          >
-            {resetArmed ? 'もう一度押すと戻ります' : '↺ 設定を規定に戻す'}
-          </button>
+          />
         </section>
       </aside>
 
@@ -467,24 +469,18 @@ export function App() {
               <span {...stylex.props(ui.label)}>
                 書き出した WebM{alphaVisible && '（透過のまま再生中）'} — {result.summary}
               </span>
-              <button
-                type="button"
-                {...stylex.props(ui.button, ui.buttonPrimary)}
+              <Button
+                label={`⬇ ${result.fileName} を保存`}
+                variant="primary"
                 onClick={() => downloadBlob(result.blob, result.fileName)}
-              >
-                ⬇ {result.fileName} を保存
-              </button>
+              />
             </div>
             {!alphaVisible && (
-              <p {...stylex.props(ui.notice)}>
-                このブラウザは透過付きの WebM を再生できないため、下のプレビューは背景が
-                黒く出ます。<strong>ファイル自体は正しく透過しています</strong>ので、
-                そのまま保存して Streamlabs で使えます。
-                <br />
-                見た目を確かめたい場合は、パソコンの Chrome か Edge で開いてください。 iPhone・iPad
-                では、Chrome や Edge も中身は Safari と同じ仕組みなので、
-                同じ端末でブラウザを変えても結果は変わりません。
-              </p>
+              <Banner
+                status="info"
+                title="ファイル自体は正しく透過しています"
+                description="このブラウザは透過付きの WebM を再生できないため、下のプレビューは背景が黒く出ます。そのまま保存して Streamlabs で使えます。見た目を確かめたい場合は、パソコンの Chrome か Edge で開いてください。iPhone・iPad では、Chrome や Edge も中身は Safari と同じ仕組みなので、同じ端末でブラウザを変えても結果は変わりません。"
+              />
             )}
             <video
               src={result.url}

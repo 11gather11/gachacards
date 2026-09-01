@@ -1,9 +1,26 @@
-import { Slider } from '@astryxdesign/core'
+import { Button, Slider, TextInput } from '@astryxdesign/core'
 import * as stylex from '@stylexjs/stylex'
 
 import type { Settings } from '../settings.ts'
 import { ui } from '../ui.ts'
 import type { UpdateSetting } from '../useSettings.ts'
+
+/** バッジに入れられる文字数。長いとカードの角からはみ出す。 */
+const BADGE_MAX_LENGTH = 12
+
+const styles = stylex.create({
+  /** 入力欄と、その右に付く小さなボタンを並べる。 */
+  row: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  /** 入力欄のほうを伸ばす。 */
+  grow: {
+    flex: 1,
+    minWidth: 0,
+  },
+})
 
 interface CardFieldsProps {
   settings: Settings
@@ -21,48 +38,40 @@ export function CardFields({ settings, update, effectiveBadge, estimatedSizeMb }
   return (
     <>
       <section {...stylex.props(ui.field)}>
-        <label {...stylex.props(ui.label)} htmlFor="badge">
-          ランク表記（空ならバッジを出さない）
-        </label>
-        <div {...stylex.props(ui.inputRow)}>
-          <input
-            id="badge"
-            type="text"
-            {...stylex.props(ui.input)}
+        <div {...stylex.props(styles.row)}>
+          <TextInput
+            label="ランク表記"
+            description="空ならバッジを出さない"
             value={effectiveBadge}
-            maxLength={12}
-            onChange={(event) => update('badge', event.target.value)}
+            // TextInput は maxLength を受け取らないので、こちらで切る
+            onChange={(value) => update('badge', value.slice(0, BADGE_MAX_LENGTH))}
+            xstyle={styles.grow}
           />
-          <button
-            type="button"
-            {...stylex.props(ui.button)}
-            title="レアリティごとの既定値に戻す"
-            disabled={badge === null}
+          <Button
+            label="レアリティごとの既定値に戻す"
+            variant="secondary"
+            isIconOnly
+            icon="↺"
+            isDisabled={badge === null}
             onClick={() => update('badge', null)}
-          >
-            ↺
-          </button>
+          />
         </div>
       </section>
 
       <section {...stylex.props(ui.field)}>
-        <label {...stylex.props(ui.label)} htmlFor="title">
-          カード名（空なら帯を出さない）
-        </label>
-        <input
-          id="title"
-          type="text"
-          {...stylex.props(ui.input)}
+        <TextInput
+          label="カード名"
+          description="空なら帯を出さない"
           value={title}
           placeholder="例: 伝説のドラゴン"
-          onChange={(event) => update('title', event.target.value)}
+          onChange={(value) => update('title', value)}
         />
-        <input
-          type="text"
-          {...stylex.props(ui.input)}
+        <TextInput
+          label="サブテキスト"
+          isLabelHidden
           value={subtitle}
           placeholder="サブテキスト（任意）"
-          onChange={(event) => update('subtitle', event.target.value)}
+          onChange={(value) => update('subtitle', value)}
         />
       </section>
 

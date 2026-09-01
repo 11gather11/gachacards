@@ -1,10 +1,10 @@
+import { Button } from '@astryxdesign/core'
 import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState } from 'react'
 
 import { renderFrameBlurred } from '../card/render.ts'
 import type { CardScene } from '../card/scene.ts'
 import { colors } from '../theme.stylex.ts'
-import { ui } from '../ui.ts'
 
 const styles = stylex.create({
   root: {
@@ -44,8 +44,16 @@ const styles = stylex.create({
     gap: 12,
     width: '100%',
   },
+  /**
+   * シークバーだけは素の range で残す。
+   *
+   * 再生中は毎フレーム値を書き換えるので、React の状態にすると
+   * 秒間 60 回の再描画になる。ref で直接触るために制御を外している。
+   * 見た目だけ Astryx の配色に合わせる
+   */
   seek: {
     flex: 1,
+    accentColor: 'var(--color-accent)',
   },
   time: {
     color: colors.textDim,
@@ -139,13 +147,11 @@ export function PreviewCanvas({ scene, motionBlurSamples, fps }: PreviewCanvasPr
       </div>
 
       <div {...stylex.props(styles.controls)}>
-        <button
-          type="button"
+        <Button
+          label={isPlaying ? '■ 停止' : '▶ 再生'}
+          variant="secondary"
           onClick={() => setIsPlaying((value) => !value)}
-          {...stylex.props(ui.button)}
-        >
-          {isPlaying ? '■ 停止' : '▶ 再生'}
-        </button>
+        />
         <input
           ref={rangeRef}
           type="range"

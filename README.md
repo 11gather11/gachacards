@@ -408,6 +408,10 @@ pnpm build                 # 本番ビルド
 `vp check` は型が通るかしか見ないので、使われなくなった export はそのまま残る。
 knip はそれを見つける。pre-push フックでは 4 つとも走らせている。
 
+`knip.json` で `@astryxdesign/theme-neutral` を除外しているのは、これが
+`global.css` の `@import` からしか参照されず、knip が CSS を追わないため。
+消すと配色のトークンが失われる。
+
 ### テスト
 
 カードの描画は OffscreenCanvas・float16 キャンバス・コニックグラデーション・
