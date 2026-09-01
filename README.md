@@ -405,6 +405,16 @@ GitHub 側は secrets ではなく変数（`vars`）に置いている。
 Web Analytics → サイトを追加 → ホスト名 → 完了 → 出てきたトークンを、
 リポジトリの Settings → Variables に `CF_ANALYTICS_TOKEN` として登録する。
 
+## sitemap と robots.txt
+
+`sitemap.xml` はビルド時に生成する（`vite.config.ts` の `sitemap` プラグイン）。
+`index.html` と `public/*.html` を読んで URL を組み立てるので、ページを足しても
+手で直すところは無い。
+
+`robots.txt` は `public/` に置いてある。ここに実体を置かないと、Cloudflare が
+自動生成する robots.txt が返る。あれは全て許可でクロールは妨げないが、
+sitemap の場所を書けないので、こちらで持つことにした。
+
 ## 使い方ページ
 
 `public/guide.html` に置いてある。プライバシーポリシーと同じく素の HTML。

@@ -1,3 +1,5 @@
+import { readdir } from 'node:fs/promises'
+
 import stylex from '@stylexjs/unplugin/vite'
 import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite-plus'
@@ -38,6 +40,43 @@ function cloudflareAnalytics(): Plugin {
   }
 }
 
+/**
+ * sitemap.xml をビルド時に出す。
+ *
+ * ページは `index.html` と `public/*.html` の静的ファイルなので、そこを読めば
+ * 一覧は自分で分かる。手で並べた配列を持たない理由は、ページを足したときに
+ * 更新を忘れても気づけないため。
+ *
+ * URL は `.html` を落とした形にする。配信側が `/privacy.html` を `/privacy` へ
+ * 転送するので、拡張子付きを載せると sitemap 経由の巡回が毎回転送を挟む。
+ *
+ * `lastmod` は書かない。ここで生成時刻を入れると、中身が変わっていないページも
+ * ビルドのたびに更新されたことになり、日付として嘘になる。
+ */
+function sitemap(origin: string): Plugin {
+  return {
+    name: 'sitemap',
+    async generateBundle() {
+      const files = await readdir('public')
+      const paths = [
+        '/',
+        ...files.filter((f) => f.endsWith('.html')).map((f) => `/${f.replace(/\.html$/, '')}`),
+      ]
+      const urls = paths.map((path) => `  <url><loc>${origin}${path}</loc></url>`).join('\n')
+
+      this.emitFile({
+        type: 'asset',
+        fileName: 'sitemap.xml',
+        source: `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>
+`,
+      })
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => ({
   // StyleX はビルド時に静的 CSS へ畳む。react より先に置く必要がある。
   // 生成された CSS は、既存の CSS アセット（global.css）に注入される
@@ -49,6 +88,7 @@ export default defineConfig(({ mode }) => ({
     }),
     react(),
     cloudflareAnalytics(),
+    sitemap('https://gachacards.11gather11.com'),
   ],
   // カードの描画は OffscreenCanvas・float16 キャンバス・コニックグラデーション・
   // canvas の blur フィルタに依存している。どれも Node には無いので、

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gachacards.11gather11.com/sitemap.xml
