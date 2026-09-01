@@ -276,6 +276,28 @@ function drawArtwork(
 
 /** カード表面を斜めに走る光沢。着地後に `shineCount` 回だけ通る。 */
 /**
+ * 帯の傾き（ラジアン）。光沢とオーロラで共有する。
+ * 別々に持つと、片方だけ直したときに 2 本の帯が平行でなくなる。
+ */
+const SWEEP_TILT = -0.42
+
+/**
+ * 斜めの帯を 1 本塗る。
+ *
+ * キャンバスごと傾けてから、カードを覆いきる大きさの矩形をグラデーションで
+ * 塗りつぶす。回した状態でも隅まで届くよう、矩形はカードの 3 倍を取る。
+ *
+ * @param ctx - 描画先。カード中心を原点とした座標系に入っていること
+ * @param box - カードの矩形
+ * @param gradient - 帯の色。横方向に並べておくと斜めの帯になる
+ */
+function paintSweep(ctx: Canvas2dContext, box: CardBox, gradient: CanvasGradient): void {
+  ctx.rotate(SWEEP_TILT)
+  ctx.fillStyle = gradient
+  ctx.fillRect(-box.width * 1.5, -box.height * 1.5, box.width * 3, box.height * 3)
+}
+
+/**
  * カード面を斜めに流れ続ける虹のオーロラ。虹（LR）だけの演出。
  *
  * {@link drawShine} の白い帯は登場後に決まった回数だけ走るが、こちらは
@@ -309,10 +331,7 @@ function drawAurora(ctx: Canvas2dContext, scene: CardScene, box: CardBox, time: 
   ctx.globalCompositeOperation = 'screen'
   // 代入するとカードのフェードを打ち消し、登場前から帯だけが見えてしまう
   ctx.globalAlpha *= 0.32
-  // 斜めに傾けた帯にするため、キャンバスごと回して塗る
-  ctx.rotate(-0.42)
-  ctx.fillStyle = gradient
-  ctx.fillRect(-box.width * 1.5, -box.height * 1.5, box.width * 3, box.height * 3)
+  paintSweep(ctx, box, gradient)
   ctx.restore()
 }
 
@@ -346,10 +365,7 @@ function drawShine(
     gradient.addColorStop(1, 'rgba(255,255,255,0)')
 
     ctx.save()
-    // 斜めに傾けた帯にするため、キャンバスごと回して塗る
-    ctx.rotate(-0.42)
-    ctx.fillStyle = gradient
-    ctx.fillRect(-box.width * 1.5, -box.height * 1.5, box.width * 3, box.height * 3)
+    paintSweep(ctx, box, gradient)
     ctx.restore()
   }
 }
