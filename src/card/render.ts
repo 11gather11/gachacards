@@ -10,6 +10,7 @@ import type { IntroConfig } from './intro.ts'
 import { drawIntro } from './intro.ts'
 import {
   clamp,
+  createRng,
   easeInCubic,
   easeOutCubic,
   easeOutElastic,
@@ -117,41 +118,203 @@ export function computeCardSize(
   return isLandscape ? { width: long, height: short } : { width: short, height: long }
 }
 
-/** フェード合成に使う中間レイヤー。 */
+/** 中間描画に使うキャンバスとそのコンテキスト。 */
 interface Layer {
   canvas: OffscreenCanvas
   ctx: OffscreenCanvasRenderingContext2D
 }
 
-/**
- * 描画先ごとに 1 枚だけ中間レイヤーを持つ。
- * プレビューと書き出しは別のコンテキストなので、同時に走っても互いのレイヤーを壊さない。
- */
-const layerCache = new WeakMap<Canvas2dContext, Layer>()
+/** 1 フレーム分の中間レイヤー一式。 */
+interface Layers {
+  /** ブラーのサンプルを 1 枚ずつ描く場所。 */
+  sample: Layer
+  /** 縁を落として量子化するまで、合成を積んでおく場所。 */
+  accum: Layer
+  /**
+   * ディザを撒く範囲を切り出す場所。
+   *
+   * 合成先と違ってこちらは 8bit にする。加算を重ねてアルファを 1 で頭打ちに
+   * したいのに、float16 は 1 を超えた値もそのまま持ってしまうため。
+   */
+  mask: Layer
+  /** 量子化直前に足すディザノイズ。8bit で積んでいるときは `null`。 */
+  noise: CanvasPattern | null
+}
 
 /**
- * フェード合成用のレイヤーを用意する。中身はクリア済みで返る。
+ * float16 のキャンバスを要求するための設定。
+ * 型定義がまだ `colorType` を知らないので、ここだけキャストする。
+ */
+const FLOAT16_CONTEXT = { alpha: true, colorType: 'float16' } as CanvasRenderingContext2DSettings
+
+/** `getContextAttributes` はまだ型定義に無いので、必要な部分だけ足して扱う。 */
+type ContextWithAttributes = OffscreenCanvasRenderingContext2D & {
+  getContextAttributes?: () => { colorType?: string }
+}
+
+/**
+ * 中間レイヤーを float16 で持てるか。
+ *
+ * 8bit で積むと、ブラーの平均もグローの勾配も 1/255 刻みに丸められる。
+ * 丸め先が隣り合う画素でそろうと、その境目が等高線になって縞に見える。
+ * float16 なら量子化は最後の 1 回だけで済む。
+ *
+ * 設定を無視して 8bit のコンテキストを返すブラウザがあるので、
+ * 要求が通ったかどうかは返ってきた属性で確かめる。
+ */
+const supportsFloat16 = ((): boolean => {
+  if (typeof OffscreenCanvas === 'undefined') return false
+  try {
+    const probe = new OffscreenCanvas(1, 1).getContext('2d', FLOAT16_CONTEXT)
+    const ctx: ContextWithAttributes | null = probe
+    return ctx?.getContextAttributes?.().colorType === 'float16'
+  } catch {
+    return false
+  }
+})()
+
+/** ディザノイズのタイルの一辺（px）。 */
+const NOISE_TILE = 128
+
+/**
+ * ディザを撒く範囲を作るときに、合成結果を何回重ねるか。
+ * アルファがこの逆数（およそ 6%）を超えていれば、マスクは 1 で頭打ちになる。
+ */
+const MASK_GAIN = 16
+
+/**
+ * ディザ用のノイズタイルを作る。白一色で、アルファだけを画素ごとの乱数にする。
+ *
+ * シードを固定するのは、描画が時刻だけで決まるという前提を崩さないため。
+ * フレームごとに模様が変わると、同じ時刻を描き直したときに絵が変わってしまう。
+ */
+function createNoiseTile(): OffscreenCanvas | null {
+  const canvas = new OffscreenCanvas(NOISE_TILE, NOISE_TILE)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  const image = ctx.createImageData(NOISE_TILE, NOISE_TILE)
+  const rng = createRng(0x5eed)
+  for (let i = 0; i < NOISE_TILE * NOISE_TILE; i++) {
+    image.data[i * 4] = 255
+    image.data[i * 4 + 1] = 255
+    image.data[i * 4 + 2] = 255
+    image.data[i * 4 + 3] = Math.floor(rng() * 256)
+  }
+  ctx.putImageData(image, 0, 0)
+  return canvas
+}
+
+/** 中間レイヤーを 1 枚作る。 */
+function createLayer(width: number, height: number, highPrecision: boolean): Layer | null {
+  const canvas = new OffscreenCanvas(width, height)
+  const ctx = canvas.getContext('2d', highPrecision ? FLOAT16_CONTEXT : { alpha: true })
+  if (!ctx) return null
+  return { canvas, ctx }
+}
+
+/**
+ * 描画先ごとに 1 組だけ中間レイヤーを持つ。
+ * プレビューと書き出しは別のコンテキストなので、同時に走っても互いのレイヤーを壊さない。
+ */
+const layerCache = new WeakMap<Canvas2dContext, Layers>()
+
+/** カードのフェード合成に使う 1 枚レイヤー。こちらも描画先ごとに持つ。 */
+const fadeLayerCache = new WeakMap<Canvas2dContext, Layer>()
+
+/**
+ * 中間レイヤー一式を用意する。合成先はクリア済みで返る。
  *
  * @param target - 最終的な描画先のコンテキスト
  * @param width - レイヤーの幅（px）
  * @param height - レイヤーの高さ（px）
  * @returns 使えるレイヤー。OffscreenCanvas が使えない環境では `null`
  */
-function acquireLayer(target: Canvas2dContext, width: number, height: number): Layer | null {
+function acquireLayers(target: Canvas2dContext, width: number, height: number): Layers | null {
   if (typeof OffscreenCanvas === 'undefined') return null
 
-  let layer = layerCache.get(target)
+  let layers = layerCache.get(target)
   // サイズが変わったら作り直す。それ以外は使い回してフレームごとの確保を避ける
+  if (!layers || layers.accum.canvas.width !== width || layers.accum.canvas.height !== height) {
+    const sample = createLayer(width, height, supportsFloat16)
+    const accum = createLayer(width, height, supportsFloat16)
+    const mask = createLayer(width, height, false)
+    if (!sample || !accum || !mask) return null
+    // 8bit で積むときは、足せる最小の量が 1 レベルそのものなので
+    // ディザにならない。ノイズごと諦める
+    const tile = supportsFloat16 ? createNoiseTile() : null
+    layers = { sample, accum, mask, noise: tile && mask.ctx.createPattern(tile, 'repeat') }
+    layerCache.set(target, layers)
+  }
+
+  layers.accum.ctx.clearRect(0, 0, width, height)
+  return layers
+}
+
+/**
+ * カードのフェード合成に使うレイヤーを取り出す。中身はクリア済みで返る。
+ *
+ * ブラーのレイヤーとは寿命が違う。こちらは {@link renderFrame} の内側で、
+ * サンプル 1 枚を描いている最中に使うので、別枠で持つ。
+ *
+ * @param target - フェードを合成する先のコンテキスト
+ * @param width - レイヤーの幅（px）
+ * @param height - レイヤーの高さ（px）
+ * @returns 使えるレイヤー。OffscreenCanvas が使えない環境では `null`
+ */
+function acquireFadeLayer(target: Canvas2dContext, width: number, height: number): Layer | null {
+  if (typeof OffscreenCanvas === 'undefined') return null
+
+  let layer = fadeLayerCache.get(target)
   if (!layer || layer.canvas.width !== width || layer.canvas.height !== height) {
-    const canvas = new OffscreenCanvas(width, height)
-    const ctx = canvas.getContext('2d', { alpha: true })
-    if (!ctx) return null
-    layer = { canvas, ctx }
-    layerCache.set(target, layer)
+    const created = createLayer(width, height, supportsFloat16)
+    if (!created) return null
+    layer = created
+    fadeLayerCache.set(target, layer)
   }
 
   layer.ctx.clearRect(0, 0, width, height)
   return layer
+}
+
+/**
+ * 量子化の直前に、1 レベル未満のノイズを足す。
+ *
+ * なだらかな勾配を 8bit に落とすと、同じ値が何 px も続いてから 1 段落ちる。
+ * その段の境目が等高線として見えるのがバンディングで、白いグローのように
+ * 広い範囲を薄く覆う絵ほど目立つ。落とす前に 1 レベル未満の乱数を足しておけば、
+ * どちらに丸まるかが画素ごとにばらけて、段が縞ではなく粒に散る。
+ *
+ * @param layers - 合成済みの中間レイヤー
+ */
+function ditherAccum(layers: Layers): void {
+  if (!layers.noise) return
+
+  const { ctx, canvas } = layers.accum
+  const { width, height } = canvas
+
+  // 何もないところにまでノイズを撒くと、透明なはずの一面が 0 と 1 のまだらになる。
+  // 目には見えないが、VP9 はアルファを別の動画として持つので、その一面のノイズが
+  // そのままビットレートに乗る（実測でファイルが 26% 増えた）。
+  // 合成結果そのものをマスクにして、光が乗っているところにだけ撒く
+  const mask = layers.mask.ctx
+  mask.clearRect(0, 0, width, height)
+  mask.save()
+  mask.globalCompositeOperation = 'lighter'
+  // 薄いところこそディザが要る。重ね塗りでアルファを飽和させ、
+  // わずかでも光があれば 1 になるマスクにする
+  for (let i = 0; i < MASK_GAIN; i++) mask.drawImage(canvas, 0, 0)
+  mask.globalCompositeOperation = 'source-in'
+  mask.fillStyle = layers.noise
+  mask.fillRect(0, 0, width, height)
+  mask.restore()
+
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  // タイルのアルファは 0..255。1/255 を掛けて、足す量を 1 レベル未満に収める
+  ctx.globalAlpha = 1 / 255
+  ctx.drawImage(layers.mask.canvas, 0, 0)
+  ctx.restore()
 }
 
 /** 出力サイズからカードの矩形を決める。 */
@@ -718,6 +881,9 @@ export interface MotionBlur {
  * 結果、光が通り過ぎた跡が「不透明な暗い色」で埋まって黒ずむ。
  * 加算ならアルファも色も（プリマルチプライドのまま）正しく平均される。
  *
+ * 合成はすべて中間レイヤーの上で済ませ、8bit に落とすのは最後の 1 回だけにする。
+ * 途中で丸めると、その誤差が隣り合う画素でそろって縞になる。
+ *
  * @param ctx - 描画先。呼び出し前にクリアしておくこと
  * @param time - アニメーション先頭からの経過秒
  * @param scene - 描画するシーン
@@ -729,28 +895,41 @@ export function renderFrameBlurred(
   scene: CardScene,
   blur: MotionBlur | null,
 ): void {
-  const layer = blur && blur.samples > 1 ? acquireLayer(ctx, scene.width, scene.height) : null
+  const layers = acquireLayers(ctx, scene.width, scene.height)
 
-  if (!blur || blur.samples <= 1 || !layer) {
+  // 中間レイヤーが作れない環境では、直に描いて縁だけ落とす
+  if (!layers) {
     renderFrame(ctx, time, scene)
+    fadeFrameEdges(ctx, scene.width, scene.height)
+    return
+  }
+
+  const samples = blur ? Math.max(1, Math.floor(blur.samples)) : 1
+  const accum = layers.accum.ctx
+
+  if (!blur || samples <= 1) {
+    renderFrame(accum, time, scene)
   } else {
     const span = blur.frameDuration * blur.shutter
-    ctx.save()
-    ctx.globalCompositeOperation = 'lighter'
-    ctx.globalAlpha = 1 / blur.samples
-    for (let i = 0; i < blur.samples; i++) {
-      layer.ctx.clearRect(0, 0, scene.width, scene.height)
-      renderFrame(layer.ctx, time + (i / blur.samples) * span, scene)
-      // 1/N に落とすときの丸め誤差が行ごとに揃うと、暗い面に横縞として出る。
-      // サンプルごとに半ピクセル未満ずらして重ね、誤差を空間的に散らす
-      ctx.drawImage(layer.canvas, ((i % 2) - 0.5) * 0.5, ((((i / 2) | 0) % 2) - 0.5) * 0.5)
+    accum.save()
+    accum.globalCompositeOperation = 'lighter'
+    accum.globalAlpha = 1 / samples
+    for (let i = 0; i < samples; i++) {
+      layers.sample.ctx.clearRect(0, 0, scene.width, scene.height)
+      renderFrame(layers.sample.ctx, time + (i / samples) * span, scene)
+      accum.drawImage(layers.sample.canvas, 0, 0)
     }
-    ctx.restore()
+    accum.restore()
   }
+
+  // ディザは全面に一様なノイズを足すので、透明なところも 1 レベルだけ浮く。
+  // 先に足しておけば、続くマスクが縁をきっちり 0 に戻してくれる
+  ditherAccum(layers)
 
   // ブラーを掛けるとサブフレームごとの揺れ幅が乗って光が端まで届きやすい。
   // 合成しきったあとに縁を落とす
-  fadeFrameEdges(ctx, scene.width, scene.height)
+  fadeFrameEdges(accum, scene.width, scene.height)
+  ctx.drawImage(layers.accum.canvas, 0, 0)
 }
 
 /**
@@ -784,7 +963,7 @@ export function renderFrame(ctx: Canvas2dContext, time: number, scene: CardScene
   // カードはグロー・アート・ビネット・枠・ラベルと層を重ねて描いているため、
   // 各層に globalAlpha を掛けると 1-(1-a)^層数 で不透明に戻ってしまい、
   // フェードがほとんど効かなくなる
-  const layer = acquireLayer(ctx, scene.width, scene.height)
+  const layer = acquireFadeLayer(ctx, scene.width, scene.height)
   if (!layer) {
     // レイヤーを用意できない環境では、精度を落としてでも描画を続ける
     ctx.save()
