@@ -60,7 +60,8 @@ export const DEFAULT_SETTINGS: Settings = {
   via: ['blue', 'green', 'red', 'gold'],
   // 配信のアラート枠は横長なことが多いので、既定は寝かせた向きにする
   orientation: 'landscape',
-  sizeId: 'md',
+  // Streamlabs のアラートボックスの慣習サイズ。Image Size 100% で収まる
+  sizeId: 'alert',
   qualityId: 'mid',
   loop: false,
   seed: 1,

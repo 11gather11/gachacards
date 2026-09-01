@@ -41,10 +41,20 @@ export interface SizePreset {
  * カード自体は 2:3 だが、フレームはそれより長辺方向に広く取る。
  * グローとパーティクルがフレーム端で切られると、透過素材に四角い縁が出るため。
  */
+/**
+ * 出力サイズの候補。
+ *
+ * `id` はブラウザに保存した設定の鍵なので、増やすのはよいが変えてはいけない。
+ * そのため `md` が「大」だったりと、id とラベルは必ずしも一致しない。
+ *
+ * 既定の 800x600 は Streamlabs のアラートボックスの慣習サイズ。ここに合わせて
+ * おくと Image Size 100% で収まり、はみ出さない。
+ */
 export const SIZE_PRESETS: readonly SizePreset[] = [
   { id: 'sm', label: '小', long: 720, short: 560 },
-  { id: 'md', label: '標準', long: 900, short: 700 },
-  { id: 'lg', label: '大', long: 1080, short: 840 },
+  { id: 'alert', label: '標準（アラート向け）', long: 800, short: 600 },
+  { id: 'md', label: '大', long: 900, short: 700 },
+  { id: 'lg', label: '特大', long: 1080, short: 840 },
 ]
 
 /** 出力フレームの実寸。 */

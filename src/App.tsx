@@ -20,6 +20,7 @@ import { RarityPicker } from './components/RarityPicker.tsx'
 import { toErrorMessage } from './errors.ts'
 import { canPlayAlpha } from './export/alpha-playback.ts'
 import { canExportTransparentWebm, exportWebm } from './export/webm.ts'
+import { DEFAULT_SETTINGS } from './settings.ts'
 import { colors } from './theme.stylex.ts'
 import type { Artwork } from './types.ts'
 import { QUALITY_PRESETS, SIZE_PRESETS, resolveFrameSize } from './types.ts'
@@ -230,10 +231,16 @@ export function App() {
     }
   }, [result])
 
-  const sizePreset = SIZE_PRESETS.find((preset) => preset.id === sizeId) ?? SIZE_PRESETS[1]!
+  // 保存値が未知の id だったときは既定に戻す。並び順に頼ると、
+  // プリセットを増やしたときに黙って別のサイズになる
+  const sizePreset =
+    SIZE_PRESETS.find((preset) => preset.id === sizeId) ??
+    SIZE_PRESETS.find((preset) => preset.id === DEFAULT_SETTINGS.sizeId)!
   // 毎レンダリングで新しい物体になると scene の再計算が止まらないので、ここで固定する
   const size = useMemo(() => resolveFrameSize(sizePreset, orientation), [sizePreset, orientation])
-  const quality = QUALITY_PRESETS.find((preset) => preset.id === qualityId) ?? QUALITY_PRESETS[1]!
+  const quality =
+    QUALITY_PRESETS.find((preset) => preset.id === qualityId) ??
+    QUALITY_PRESETS.find((preset) => preset.id === DEFAULT_SETTINGS.qualityId)!
   const rarity = getRarity(rarityId)
   // null は「上書きしていない」の意味なので、レアリティ側の既定値に落とす
   const effectiveBadge = badge ?? rarity.badge
