@@ -182,6 +182,9 @@ const PARTICLE_OVER_CARD = 0.35
 /** オーロラの帯がカードを 1 回横切るのにかける秒数。 */
 const AURORA_CYCLE = 3.2
 
+/** 枠を回る光が 1 周するのにかける秒数。 */
+const COMET_CYCLE = 2.4
+
 /** ディザノイズのタイルの一辺（px）。 */
 const NOISE_TILE = 128
 
@@ -567,6 +570,72 @@ function drawGlow(
   ctx.drawImage(layer.canvas, 0, 0)
   ctx.restore()
 }
+
+/**
+ * 枠に沿って光が周回する演出。虹（LR）だけ。
+ *
+ * 線を破線にして、1 本ぶんだけ残るようにギャップを周長いっぱいに取る。
+ * あとは `lineDashOffset` を時間で動かせば、パスの上を光が走る。
+ * 座標を自前で追わずに済むので、角丸のままきれいに回る。
+ *
+ * 尾は長さの違う 3 本を、終点をそろえて重ねて作る。長いほど薄くする。
+ *
+ * @param ctx - 描画先。カード中心を原点とした座標系に入っていること
+ * @param scene - 描画するシーン
+ * @param box - カードの矩形
+ * @param time - アニメーション先頭からの経過秒
+ */
+function drawFrameComet(ctx: Canvas2dContext, scene: CardScene, box: CardBox, time: number): void {
+  const { frameColors, rainbowFrame } = scene.rarity
+  if (!rainbowFrame) return
+
+  // 外枠と同じ位置を走らせる。周長は破線の指定に要るので自前で出す
+  const inset = box.unit * 0.014
+  const width = box.width - inset * 2
+  const height = box.height - inset * 2
+  const radius = Math.max(0, box.radius - inset)
+  const perimeter = 2 * (width - 2 * radius) + 2 * (height - 2 * radius) + 2 * Math.PI * radius
+  if (perimeter <= 0) return
+
+  // 頭の位置。パスの始点からの道のりで表す
+  const head = ((time / COMET_CYCLE) % 1) * perimeter
+  // 尾が枠を一周するあいだに虹も一周するので、光の色は常にその場の枠色に近い
+  const colorIndex = Math.floor((head / perimeter) * frameColors.length) % frameColors.length
+
+  ctx.save()
+  const fade = ctx.globalAlpha
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.lineCap = 'round'
+
+  for (const [lengthRatio, alpha, widthRatio, tinted] of COMET_TRAIL) {
+    const dash = perimeter * lengthRatio
+    ctx.setLineDash([dash, perimeter - dash])
+    // 破線は「始点 − offset」から始まる。終点を head にそろえるので、
+    // 長さのぶんだけ手前から引き始める
+    ctx.lineDashOffset = dash - head
+    // カード側のフェードに乗せる。代入すると退場後も光だけが枠を回り続ける
+    ctx.globalAlpha = alpha * fade
+    // にじみは shadowBlur ではなく太い線で作る。影は 1 本ごとに
+    // 別レンダーが走るので、ブラーのサンプル数だけ効いて重い
+    ctx.strokeStyle = tinted ? (frameColors[colorIndex] ?? '#ffffff') : '#ffffff'
+    ctx.lineWidth = box.unit * widthRatio
+    roundedRectPath(ctx, box, inset)
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
+/**
+ * 周回する光の尾。`[周長に対する長さ, 濃さ, 短辺に対する太さ, 枠色で塗るか]` を
+ * 長い順に。最初の 1 本は太く枠色にして、頭の周りのにじみにする。
+ */
+const COMET_TRAIL: readonly (readonly [number, number, number, boolean])[] = [
+  [0.05, 0.3, 0.05, true],
+  [0.14, 0.18, 0.01, false],
+  [0.06, 0.4, 0.013, false],
+  [0.02, 0.9, 0.016, false],
+]
 
 /** 枠に使うグラデーションを作る。虹だけは時間で回るコニックグラデーションにする。 */
 function createFrameStyle(
@@ -1302,6 +1371,8 @@ function drawCard(
   ctx.lineWidth = box.unit * 0.005
   roundedRectPath(ctx, box, box.unit * 0.045)
   ctx.stroke()
+
+  drawFrameComet(ctx, scene, box, time)
 
   ctx.restore()
 
