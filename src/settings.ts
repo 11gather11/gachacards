@@ -67,6 +67,18 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 /**
+ * 既定値の複製を作る。
+ *
+ * 展開しただけだと `via` の配列は {@link DEFAULT_SETTINGS} と同じ実体のままで、
+ * 呼び出し側が書き換えた瞬間に既定値そのものが変わってしまう。
+ *
+ * @returns 誰とも共有していない既定の設定
+ */
+function defaults(): Settings {
+  return { ...DEFAULT_SETTINGS, via: [...DEFAULT_SETTINGS.via] }
+}
+
+/**
  * 保存済みの設定を読み出す。壊れていたり読めない場合は既定値を返す。
  *
  * @returns 復元した設定。プライベートウィンドウなどで localStorage が
@@ -75,20 +87,20 @@ export const DEFAULT_SETTINGS: Settings = {
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { ...DEFAULT_SETTINGS }
+    if (!raw) return defaults()
     // JSON.parse は any を返す。そのまま Settings とみなすと、壊れた保存値が
     // 型の裏をすり抜けてしまうので、まず object かどうかだけ確かめる
     const parsed: unknown = JSON.parse(raw)
-    if (typeof parsed !== 'object' || parsed === null) return { ...DEFAULT_SETTINGS }
+    if (typeof parsed !== 'object' || parsed === null) return defaults()
 
     // 以前は "none" / "promote" / "fake" を保存していた。
     // 演出の種類は無くなったので、出すか出さないかだけを引き継ぐ
     const introMode: IntroMode = 'introMode' in parsed && parsed.introMode === 'off' ? 'off' : 'on'
 
     // 保存後にキーが増えても壊れないよう、既定値の上に読めた分だけ重ねる
-    return { ...DEFAULT_SETTINGS, ...parsed, introMode }
+    return { ...defaults(), ...parsed, introMode }
   } catch {
-    return { ...DEFAULT_SETTINGS }
+    return defaults()
   }
 }
 

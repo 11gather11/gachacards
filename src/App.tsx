@@ -1,7 +1,6 @@
 import * as stylex from '@stylexjs/stylex'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import type { IntroMode } from './card/intro.ts'
 import {
   buildIntroStages,
   computeIntroDuration,
@@ -9,7 +8,6 @@ import {
   listIntermediateRarities,
 } from './card/intro.ts'
 import { createParticles } from './card/particles.ts'
-import type { RarityId } from './card/rarity.ts'
 import { getRarity } from './card/rarity.ts'
 import type { CardScene } from './card/scene.ts'
 import { computeCardSize, computeTimeline } from './card/scene.ts'
@@ -18,11 +16,12 @@ import { PreviewCanvas } from './components/PreviewCanvas.tsx'
 import { RarityPicker } from './components/RarityPicker.tsx'
 import { toErrorMessage } from './errors.ts'
 import { canExportTransparentWebm, exportWebm } from './export/webm.ts'
-import { DEFAULT_SETTINGS, drawSeed, loadSettings, saveSettings } from './settings.ts'
+import { drawSeed } from './settings.ts'
 import { colors } from './theme.stylex.ts'
-import type { Artwork, Orientation } from './types.ts'
+import type { Artwork } from './types.ts'
 import { QUALITY_PRESETS, SIZE_PRESETS, isOrientation, resolveFrameSize } from './types.ts'
 import { ui } from './ui.ts'
+import { useSettings } from './useSettings.ts'
 
 /**
  * 透過を確かめるための市松模様。
@@ -196,9 +195,6 @@ const MOTION_BLUR_OPTIONS = [
   { samples: 8, label: '強 (8x)' },
 ] as const
 
-/** 前回の設定。アプリ起動時に一度だけ読む。 */
-const INITIAL = loadSettings()
-
 /** Blob をファイルとして保存させる。 */
 function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob)
@@ -212,54 +208,9 @@ function downloadBlob(blob: Blob, fileName: string): void {
 
 export function App() {
   const [artwork, setArtwork] = useState<Artwork | null>(null)
-  const [rarityId, setRarityId] = useState<RarityId>(INITIAL.rarityId)
-  const [badge, setBadge] = useState<string | null>(INITIAL.badge)
-  const [title, setTitle] = useState(INITIAL.title)
-  const [subtitle, setSubtitle] = useState(INITIAL.subtitle)
-  const [duration, setDuration] = useState(INITIAL.duration)
-  const [fps, setFps] = useState<number>(INITIAL.fps)
-  const [introMode, setIntroMode] = useState<IntroMode>(INITIAL.introMode)
-  const [introSeconds, setIntroSeconds] = useState(INITIAL.introSeconds)
-  const [motionBlur, setMotionBlur] = useState(INITIAL.motionBlur)
-  const [via, setVia] = useState<RarityId[]>(INITIAL.via)
-  const [orientation, setOrientation] = useState<Orientation>(INITIAL.orientation)
-  const [sizeId, setSizeId] = useState(INITIAL.sizeId)
-  const [qualityId, setQualityId] = useState(INITIAL.qualityId)
-  const [loop, setLoop] = useState(INITIAL.loop)
-  const [seed, setSeed] = useState(INITIAL.seed)
-  const [background, setBackground] = useState<PreviewBackground>('checker')
-  const [resetArmed, setResetArmed] = useState(false)
-
-  const [progress, setProgress] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<ExportedFile | null>(null)
-  const [isSupported, setIsSupported] = useState<boolean | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-
-  useEffect(() => {
-    void canExportTransparentWebm().then(setIsSupported)
-  }, [])
-
-  // 別の日に同じカードを作り直せるよう、seed を含めた設定を残しておく
-  useEffect(() => {
-    saveSettings({
-      rarityId,
-      badge,
-      title,
-      subtitle,
-      duration,
-      fps,
-      introMode,
-      introSeconds,
-      motionBlur,
-      via,
-      orientation,
-      sizeId,
-      qualityId,
-      loop,
-      seed,
-    })
-  }, [
+  const { settings, update, reset, resetArmed } = useSettings()
+  // 読む側は今までどおりの名前で書けるよう、ここで開いておく
+  const {
     rarityId,
     badge,
     title,
@@ -275,16 +226,19 @@ export function App() {
     qualityId,
     loop,
     seed,
-  ])
+  } = settings
 
-  // 「もう一度押すと戻る」状態を置きっぱなしにしない。
-  // 次に開いたときに構えたままだと、1 押しで消えたように見えてしまう
+  const [background, setBackground] = useState<PreviewBackground>('checker')
+
+  const [progress, setProgress] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<ExportedFile | null>(null)
+  const [isSupported, setIsSupported] = useState<boolean | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
   useEffect(() => {
-    const timer = resetArmed ? setTimeout(() => setResetArmed(false), 4000) : null
-    return () => {
-      if (timer !== null) clearTimeout(timer)
-    }
-  }, [resetArmed])
+    void canExportTransparentWebm().then(setIsSupported)
+  }, [])
 
   // 書き出し結果の URL は差し替えのたびに解放する
   useEffect(() => {
@@ -397,36 +351,6 @@ export function App() {
 
   const isExporting = progress !== null
 
-  /**
-   * 設定一式を既定値へ戻す。アートワークは設定ではないので残す。
-   *
-   * 押し間違いでカード名や seed を失うと戻せないため、2 回押させる。
-   * ブラウザの confirm はプレビューの再生を止めてしまうので使わない。
-   */
-  const handleReset = () => {
-    if (!resetArmed) {
-      setResetArmed(true)
-      return
-    }
-    setResetArmed(false)
-    setRarityId(DEFAULT_SETTINGS.rarityId)
-    setBadge(DEFAULT_SETTINGS.badge)
-    setTitle(DEFAULT_SETTINGS.title)
-    setSubtitle(DEFAULT_SETTINGS.subtitle)
-    setDuration(DEFAULT_SETTINGS.duration)
-    setFps(DEFAULT_SETTINGS.fps)
-    setIntroMode(DEFAULT_SETTINGS.introMode)
-    setIntroSeconds(DEFAULT_SETTINGS.introSeconds)
-    setMotionBlur(DEFAULT_SETTINGS.motionBlur)
-    // 既定値の配列をそのまま渡すと、あとでチェックを外したときに既定値ごと変わる
-    setVia([...DEFAULT_SETTINGS.via])
-    setOrientation(DEFAULT_SETTINGS.orientation)
-    setSizeId(DEFAULT_SETTINGS.sizeId)
-    setQualityId(DEFAULT_SETTINGS.qualityId)
-    setLoop(DEFAULT_SETTINGS.loop)
-    setSeed(DEFAULT_SETTINGS.seed)
-  }
-
   return (
     <div {...stylex.props(styles.app)}>
       <aside {...stylex.props(styles.panel)}>
@@ -442,7 +366,7 @@ export function App() {
 
         <section {...stylex.props(ui.field)}>
           <span {...stylex.props(ui.label)}>レアリティ（保留カラー）</span>
-          <RarityPicker value={rarityId} onChange={setRarityId} />
+          <RarityPicker value={rarityId} onChange={(value) => update('rarityId', value)} />
         </section>
 
         <section {...stylex.props(ui.field)}>
@@ -456,14 +380,14 @@ export function App() {
               {...stylex.props(ui.input)}
               value={effectiveBadge}
               maxLength={12}
-              onChange={(event) => setBadge(event.target.value)}
+              onChange={(event) => update('badge', event.target.value)}
             />
             <button
               type="button"
               {...stylex.props(ui.button)}
               title="レアリティごとの既定値に戻す"
               disabled={badge === null}
-              onClick={() => setBadge(null)}
+              onClick={() => update('badge', null)}
             >
               ↺
             </button>
@@ -480,14 +404,14 @@ export function App() {
             {...stylex.props(ui.input)}
             value={title}
             placeholder="例: 伝説のドラゴン"
-            onChange={(event) => setTitle(event.target.value)}
+            onChange={(event) => update('title', event.target.value)}
           />
           <input
             type="text"
             {...stylex.props(ui.input)}
             value={subtitle}
             placeholder="サブテキスト（任意）"
-            onChange={(event) => setSubtitle(event.target.value)}
+            onChange={(event) => update('subtitle', event.target.value)}
           />
         </section>
 
@@ -502,7 +426,7 @@ export function App() {
             max={30}
             step={0.5}
             value={duration}
-            onChange={(event) => setDuration(Number(event.target.value))}
+            onChange={(event) => update('duration', Number(event.target.value))}
           />
         </section>
 
@@ -511,7 +435,7 @@ export function App() {
             <input
               type="checkbox"
               checked={introMode === 'on'}
-              onChange={(event) => setIntroMode(event.target.checked ? 'on' : 'off')}
+              onChange={(event) => update('introMode', event.target.checked ? 'on' : 'off')}
             />
             入りの演出（光が集まって弾ける）
           </label>
@@ -529,7 +453,7 @@ export function App() {
                 max={8}
                 step={0.1}
                 value={introSeconds}
-                onChange={(event) => setIntroSeconds(Number(event.target.value))}
+                onChange={(event) => update('introSeconds', Number(event.target.value))}
               />
               {intermediates.length > 0 && (
                 <>
@@ -541,10 +465,11 @@ export function App() {
                           type="checkbox"
                           checked={via.includes(preset.id)}
                           onChange={(event) =>
-                            setVia((current) =>
+                            update(
+                              'via',
                               event.target.checked
-                                ? [...current, preset.id]
-                                : current.filter((id) => id !== preset.id),
+                                ? [...via, preset.id]
+                                : via.filter((id) => id !== preset.id),
                             )
                           }
                         />
@@ -554,14 +479,19 @@ export function App() {
                     <button
                       type="button"
                       {...stylex.props(ui.button, ui.buttonSlim)}
-                      onClick={() => setVia(intermediates.map((preset) => preset.id))}
+                      onClick={() =>
+                        update(
+                          'via',
+                          intermediates.map((preset) => preset.id),
+                        )
+                      }
                     >
                       全部
                     </button>
                     <button
                       type="button"
                       {...stylex.props(ui.button, ui.buttonSlim)}
-                      onClick={() => setVia([])}
+                      onClick={() => update('via', [])}
                     >
                       一気に
                     </button>
@@ -584,7 +514,7 @@ export function App() {
               {...stylex.props(ui.input)}
               value={orientation}
               onChange={(event) => {
-                if (isOrientation(event.target.value)) setOrientation(event.target.value)
+                if (isOrientation(event.target.value)) update('orientation', event.target.value)
               }}
             >
               <option value="landscape">横長</option>
@@ -596,7 +526,7 @@ export function App() {
             <select
               {...stylex.props(ui.input)}
               value={sizeId}
-              onChange={(event) => setSizeId(event.target.value)}
+              onChange={(event) => update('sizeId', event.target.value)}
             >
               {SIZE_PRESETS.map((preset) => {
                 const frame = resolveFrameSize(preset, orientation)
@@ -616,7 +546,7 @@ export function App() {
             <select
               {...stylex.props(ui.input)}
               value={fps}
-              onChange={(event) => setFps(Number(event.target.value))}
+              onChange={(event) => update('fps', Number(event.target.value))}
             >
               {FPS_OPTIONS.map((value) => (
                 <option key={value} value={value}>
@@ -630,7 +560,7 @@ export function App() {
             <select
               {...stylex.props(ui.input)}
               value={motionBlur}
-              onChange={(event) => setMotionBlur(Number(event.target.value))}
+              onChange={(event) => update('motionBlur', Number(event.target.value))}
             >
               {MOTION_BLUR_OPTIONS.map((option) => (
                 <option key={option.samples} value={option.samples}>
@@ -644,7 +574,7 @@ export function App() {
             <select
               {...stylex.props(ui.input)}
               value={qualityId}
-              onChange={(event) => setQualityId(event.target.value)}
+              onChange={(event) => update('qualityId', event.target.value)}
             >
               {QUALITY_PRESETS.map((preset) => (
                 <option key={preset.id} value={preset.id}>
@@ -666,14 +596,14 @@ export function App() {
                 min={0}
                 step={1}
                 onChange={(event) =>
-                  setSeed(Math.max(0, Math.floor(Number(event.target.value) || 0)))
+                  update('seed', Math.max(0, Math.floor(Number(event.target.value) || 0)))
                 }
               />
               <button
                 type="button"
                 {...stylex.props(ui.button)}
                 title="別の配置を引き直す"
-                onClick={() => setSeed(drawSeed())}
+                onClick={() => update('seed', drawSeed())}
               >
                 🎲
               </button>
@@ -686,7 +616,7 @@ export function App() {
             <input
               type="checkbox"
               checked={loop}
-              onChange={(event) => setLoop(event.target.checked)}
+              onChange={(event) => update('loop', event.target.checked)}
             />
             ループ用（最後のフェードアウトを省く）
           </label>
@@ -724,7 +654,7 @@ export function App() {
           <button
             type="button"
             {...stylex.props(ui.button, ui.buttonSlim)}
-            onClick={handleReset}
+            onClick={reset}
             disabled={isExporting}
           >
             {resetArmed ? 'もう一度押すと戻ります' : '↺ 設定を規定に戻す'}
