@@ -412,6 +412,26 @@ knip はそれを見つける。pre-push フックでは 4 つとも走らせて
 `global.css` の `@import` からしか参照されず、knip が CSS を追わないため。
 消すと配色のトークンが失われる。
 
+### Astryx の版は固定してある
+
+UI は Meta の [Astryx](https://astryx.atmeta.com)（React 19 + StyleX）に載せている。
+peer が `@stylexjs/stylex ^0.19.0` で、このプロジェクトと一致する。
+
+`@astryxdesign/core` と `theme-neutral` は**キャレットを付けずに固定**している。
+まだ Beta で、2 か月のあいだに版が 1176 個出ている。破壊的変更を
+`pnpm update` で黙って拾わないようにしておく。
+
+上げるときは版を明示して、UI を一通り触ってから入れること。
+
+```bash
+pnpm add @astryxdesign/core@x.y.z @astryxdesign/theme-neutral@x.y.z
+```
+
+CSS レイヤーの順は `index.html` の `<head>` で宣言している。順序は
+「最初に現れた場所」で決まるので、`global.css` に書くと StyleX の
+`priority*` が先に登録され、あとから来る Astryx の `reset` に負けて
+こちらで指定した padding や背景が消える。
+
 ### テスト
 
 カードの描画は OffscreenCanvas・float16 キャンバス・コニックグラデーション・

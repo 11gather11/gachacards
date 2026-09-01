@@ -220,10 +220,10 @@ importers:
   .:
     dependencies:
       '@astryxdesign/core':
-        specifier: ^0.5.2
+        specifier: 0.5.2
         version: 0.5.2(@stylexjs/stylex@0.19.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@astryxdesign/theme-neutral':
-        specifier: ^0.5.2
+        specifier: 0.5.2
         version: 0.5.2(@astryxdesign/core@0.5.2(@stylexjs/stylex@0.19.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       '@stylexjs/stylex':
         specifier: ^0.19.0
