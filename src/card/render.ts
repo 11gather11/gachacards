@@ -179,6 +179,9 @@ const GLOW_TINT = 0.7
 /** カードの上に乗った粒の濃さ。バッジや名前を隠さないよう落とす。 */
 const PARTICLE_OVER_CARD = 0.35
 
+/** オーロラの帯がカードを 1 回横切るのにかける秒数。 */
+const AURORA_CYCLE = 3.2
+
 /** ディザノイズのタイルの一辺（px）。 */
 const NOISE_TILE = 128
 
@@ -628,6 +631,47 @@ function drawArtwork(
 }
 
 /** カード表面を斜めに走る光沢。着地後に `shineCount` 回だけ通る。 */
+/**
+ * カード面を斜めに流れ続ける虹のオーロラ。虹（LR）だけの演出。
+ *
+ * {@link drawShine} の白い帯は登場後に決まった回数だけ走るが、こちらは
+ * 尺のあいだずっと流れ続ける。「常に何かが動いている」ことで最上位を示す。
+ *
+ * @param ctx - 描画先。カードの角丸でクリップされた中に入っていること
+ * @param scene - 描画するシーン
+ * @param box - カードの矩形
+ * @param time - アニメーション先頭からの経過秒
+ */
+function drawAurora(ctx: Canvas2dContext, scene: CardScene, box: CardBox, time: number): void {
+  const { frameColors, rainbowFrame } = scene.rarity
+  if (!rainbowFrame || frameColors.length < 2) return
+
+  // 帯はカードの外から外へ抜ける。折り返しはカードの外で起きるので、
+  // 位置が一周して戻ってもつなぎ目は見えない
+  const phase = (time % AURORA_CYCLE) / AURORA_CYCLE
+  const travel = box.width * 3.2
+  const center = -travel / 2 + travel * phase
+  const half = box.width * 0.45
+
+  const gradient = ctx.createLinearGradient(center - half, 0, center + half, 0)
+  gradient.addColorStop(0, 'rgba(0,0,0,0)')
+  frameColors.forEach((color, index) => {
+    gradient.addColorStop(0.12 + (0.76 * index) / (frameColors.length - 1), color)
+  })
+  gradient.addColorStop(1, 'rgba(0,0,0,0)')
+
+  ctx.save()
+  // 加算だと白く飛んでアートが消える。screen なら明るいところを持ち上げつつ色が残る
+  ctx.globalCompositeOperation = 'screen'
+  // 代入するとカードのフェードを打ち消し、登場前から帯だけが見えてしまう
+  ctx.globalAlpha *= 0.32
+  // 斜めに傾けた帯にするため、キャンバスごと回して塗る
+  ctx.rotate(-0.42)
+  ctx.fillStyle = gradient
+  ctx.fillRect(-box.width * 1.5, -box.height * 1.5, box.width * 3, box.height * 3)
+  ctx.restore()
+}
+
 function drawShine(
   ctx: Canvas2dContext,
   scene: CardScene,
@@ -1242,6 +1286,7 @@ function drawCard(
     drawHologram(ctx, box, time)
   }
 
+  drawAurora(ctx, scene, box, time)
   drawShine(ctx, scene, box, timeline, time)
   drawLabels(ctx, scene, box)
   ctx.restore()
