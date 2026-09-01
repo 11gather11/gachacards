@@ -392,19 +392,23 @@ favicon は手書きの SVG（`public/favicon.svg`）。16x16 まで縮むので
 
 ## アクセス解析
 
-Cloudflare Web Analytics を、トークンが渡されたときだけ差し込む。Cookie を
-使わないので同意バナーが要らない。
+Cloudflare Web Analytics を使う。Cookie を使わないので同意バナーが要らない。
 
-```bash
-CF_ANALYTICS_TOKEN=xxxxx pnpm build
-```
+サイトが Cloudflare 経由なので、**ダッシュボードで登録するだけでビーコンが
+自動で挿入される**。コードは要らない。
 
-トークンはページに載せて使う公開値で、秘密ではない。渡さなければビーコンは
-出力されない。独自ドメインを Cloudflare 経由にしている場合は、ダッシュボードから
-自動で挿す設定もあるので、そのときはこの環境変数を渡さなくてよい。
+Web Analytics → サイトを追加 → `gachacards.11gather11.com` → 完了
 
-素の `%VITE_...%` を HTML に直書きしないのは、環境変数が無いビルドでその文字列が
-そのまま残り、毎回無効なトークンでリクエストが飛ぶため。
+配信元が `Cache-Control` に `no-transform` を付けていると自動挿入が効かないが、
+この Worker は `public, max-age=0, must-revalidate` なので問題ない。
+
+## プライバシーポリシー
+
+`public/privacy.html` に置いてある。素の HTML で、アプリの JS は読み込まない。
+
+書いてあることは実測に基づく。外部へ出るリクエストは Playwright で確かめて、
+アクセス解析のビーコン（`static.cloudflareinsights.com`）だけであることを
+確認した。取り扱うものを増やしたら、ここも直すこと。
 
 ## 開発
 

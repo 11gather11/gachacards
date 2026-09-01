@@ -143,6 +143,30 @@ const styles = stylex.create({
     gap: 12,
     flexWrap: 'wrap',
   },
+  /**
+   * 狭い画面でだけ出す。
+   *
+   * 端末を推測せず、画面の広さだけで判断する。このツールは横に並べた
+   * パネルとプレビューを前提にしているので、そこが崩れる幅なら
+   * 使い勝手が落ちるのは端末に関係なく本当のこと
+   */
+  narrowOnly: {
+    display: { default: 'none', '@media (max-width: 900px)': 'block' },
+  },
+  /** パネルの一番下に添える小さな案内。 */
+  footer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    marginTop: 'auto',
+    paddingTop: 12,
+    color: colors.textDim,
+    fontSize: 11,
+  },
+  footerLink: {
+    color: colors.textDim,
+    textDecoration: 'underline',
+  },
   resultVideo: {
     maxHeight: '22vh',
     alignSelf: 'flex-start',
@@ -361,6 +385,14 @@ export function App() {
           <p {...stylex.props(styles.subtitle)}>画像から、透過 WebM のカード演出を作る</p>
         </header>
 
+        <div {...stylex.props(styles.narrowOnly)}>
+          <Banner
+            status="info"
+            title="パソコンでの利用を想定しています"
+            description="スマートフォンでも書き出せますが、画面が狭く、時間もかかります。iPhone・iPad では、書き出したあとのプレビューが黒く見えます（ファイル自体は正しく透過しています）。"
+          />
+        </div>
+
         <section {...stylex.props(ui.field)}>
           <span {...stylex.props(ui.label)}>アートワーク</span>
           <ImageDropZone artwork={artwork} onSelect={setArtwork} onError={setError} />
@@ -439,6 +471,13 @@ export function App() {
             onClick={reset}
           />
         </section>
+
+        <footer {...stylex.props(styles.footer)}>
+          <a href="/privacy.html" {...stylex.props(styles.footerLink)}>
+            プライバシーポリシー
+          </a>
+          <span>画像はブラウザの外に出ません</span>
+        </footer>
       </aside>
 
       <main {...stylex.props(styles.stage)}>
