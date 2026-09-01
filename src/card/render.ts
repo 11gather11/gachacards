@@ -606,8 +606,12 @@ function drawFrameComet(ctx: Canvas2dContext, scene: CardScene, box: CardBox, ti
   const fade = ctx.globalAlpha
   ctx.globalCompositeOperation = 'lighter'
   ctx.lineCap = 'round'
+  // にじみは影で作る。太い線を重ねるより重いが、外へ向かって落ちる裾が出るので
+  // 光が枠から漏れているように見える
+  ctx.shadowColor = frameColors[colorIndex] ?? '#ffffff'
+  ctx.shadowBlur = box.unit * 0.07
 
-  for (const [lengthRatio, alpha, widthRatio, tinted] of COMET_TRAIL) {
+  for (const [lengthRatio, alpha, widthRatio] of COMET_TRAIL) {
     const dash = perimeter * lengthRatio
     ctx.setLineDash([dash, perimeter - dash])
     // 破線は「始点 − offset」から始まる。終点を head にそろえるので、
@@ -615,9 +619,7 @@ function drawFrameComet(ctx: Canvas2dContext, scene: CardScene, box: CardBox, ti
     ctx.lineDashOffset = dash - head
     // カード側のフェードに乗せる。代入すると退場後も光だけが枠を回り続ける
     ctx.globalAlpha = alpha * fade
-    // にじみは shadowBlur ではなく太い線で作る。影は 1 本ごとに
-    // 別レンダーが走るので、ブラーのサンプル数だけ効いて重い
-    ctx.strokeStyle = tinted ? (frameColors[colorIndex] ?? '#ffffff') : '#ffffff'
+    ctx.strokeStyle = '#ffffff'
     ctx.lineWidth = box.unit * widthRatio
     roundedRectPath(ctx, box, inset)
     ctx.stroke()
@@ -626,15 +628,11 @@ function drawFrameComet(ctx: Canvas2dContext, scene: CardScene, box: CardBox, ti
   ctx.restore()
 }
 
-/**
- * 周回する光の尾。`[周長に対する長さ, 濃さ, 短辺に対する太さ, 枠色で塗るか]` を
- * 長い順に。最初の 1 本は太く枠色にして、頭の周りのにじみにする。
- */
-const COMET_TRAIL: readonly (readonly [number, number, number, boolean])[] = [
-  [0.05, 0.3, 0.05, true],
-  [0.14, 0.18, 0.01, false],
-  [0.06, 0.4, 0.013, false],
-  [0.02, 0.9, 0.016, false],
+/** 周回する光の尾。`[周長に対する長さ, 濃さ, 短辺に対する太さ]` を長い順に。 */
+const COMET_TRAIL: readonly (readonly [number, number, number])[] = [
+  [0.14, 0.18, 0.01],
+  [0.06, 0.4, 0.013],
+  [0.02, 0.9, 0.016],
 ]
 
 /** 枠に使うグラデーションを作る。虹だけは時間で回るコニックグラデーションにする。 */
