@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Wrangler の作業ディレクトリ
+.wrangler

@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同じブランチへ続けて push したとき、古い実行は打ち切る。
+# デプロイまで含むので、追い越しで古いビルドが後から出るのを防ぐ意味もある
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # Vite+ は Node と pnpm も面倒を見るので、setup-node は要らない
+      - uses: voidzero-dev/setup-vp@v1.18.0
+        with:
+          node-version: '24'
+          cache: true
+
+      - run: vp install
+
+      - name: 整形・lint・型チェック
+        run: vp check
+
+      - name: 使われていない export を探す
+        run: vp run knip
+
+      # カードの描画は OffscreenCanvas や float16 キャンバスに依存していて
+      # Node では動かない。テストは実物の Chromium の中で走らせる
+      - name: Chromium を用意する
+        run: vp exec playwright install --with-deps chromium
+
+      - name: テスト
+        run: vp test run
+
+      - name: 本番ビルド
+        run: vp run build
+
+      # main への push のときだけ出す。プルリクではビルドが通るところまで
+      - name: Cloudflare Workers へデプロイ
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: pnpm
