@@ -11,15 +11,17 @@ import { createParticles } from './card/particles.ts'
 import { getRarity } from './card/rarity.ts'
 import type { CardScene } from './card/scene.ts'
 import { computeCardSize, computeTimeline } from './card/scene.ts'
+import { CardFields } from './components/CardFields.tsx'
 import { ImageDropZone } from './components/ImageDropZone.tsx'
+import { IntroFields } from './components/IntroFields.tsx'
+import { OutputFields } from './components/OutputFields.tsx'
 import { PreviewCanvas } from './components/PreviewCanvas.tsx'
 import { RarityPicker } from './components/RarityPicker.tsx'
 import { toErrorMessage } from './errors.ts'
 import { canExportTransparentWebm, exportWebm } from './export/webm.ts'
-import { drawSeed } from './settings.ts'
 import { colors } from './theme.stylex.ts'
 import type { Artwork } from './types.ts'
-import { QUALITY_PRESETS, SIZE_PRESETS, isOrientation, resolveFrameSize } from './types.ts'
+import { QUALITY_PRESETS, SIZE_PRESETS, resolveFrameSize } from './types.ts'
 import { ui } from './ui.ts'
 import { useSettings } from './useSettings.ts'
 
@@ -126,16 +128,6 @@ const styles = stylex.create({
       'linear-gradient(160deg, #101828, #1d2a3f)',
     ].join(', '),
   },
-  via: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 10,
-  },
-  viaCheckbox: {
-    gap: 5,
-    color: colors.text,
-  },
   result: {
     display: 'flex',
     flexDirection: 'column',
@@ -181,19 +173,6 @@ interface ExportedFile {
   /** サイズやフレーム数をまとめた表示用の文字列。 */
   summary: string
 }
-
-const FPS_OPTIONS = [24, 30, 60] as const
-
-/**
- * モーションブラーの強さ。サンプル数がそのまま描画回数の倍率になるので、
- * 上げるほど書き出しに時間がかかる。
- */
-const MOTION_BLUR_OPTIONS = [
-  { samples: 1, label: 'なし' },
-  { samples: 2, label: '弱 (2x)' },
-  { samples: 4, label: '中 (4x)' },
-  { samples: 8, label: '強 (8x)' },
-] as const
 
 /** Blob をファイルとして保存させる。 */
 function downloadBlob(blob: Blob, fileName: string): void {
@@ -369,258 +348,22 @@ export function App() {
           <RarityPicker value={rarityId} onChange={(value) => update('rarityId', value)} />
         </section>
 
-        <section {...stylex.props(ui.field)}>
-          <label {...stylex.props(ui.label)} htmlFor="badge">
-            ランク表記（空ならバッジを出さない）
-          </label>
-          <div {...stylex.props(ui.inputRow)}>
-            <input
-              id="badge"
-              type="text"
-              {...stylex.props(ui.input)}
-              value={effectiveBadge}
-              maxLength={12}
-              onChange={(event) => update('badge', event.target.value)}
-            />
-            <button
-              type="button"
-              {...stylex.props(ui.button)}
-              title="レアリティごとの既定値に戻す"
-              disabled={badge === null}
-              onClick={() => update('badge', null)}
-            >
-              ↺
-            </button>
-          </div>
-        </section>
+        <CardFields
+          settings={settings}
+          update={update}
+          effectiveBadge={effectiveBadge}
+          estimatedSizeMb={estimatedSizeMb}
+        />
 
-        <section {...stylex.props(ui.field)}>
-          <label {...stylex.props(ui.label)} htmlFor="title">
-            カード名（空なら帯を出さない）
-          </label>
-          <input
-            id="title"
-            type="text"
-            {...stylex.props(ui.input)}
-            value={title}
-            placeholder="例: 伝説のドラゴン"
-            onChange={(event) => update('title', event.target.value)}
-          />
-          <input
-            type="text"
-            {...stylex.props(ui.input)}
-            value={subtitle}
-            placeholder="サブテキスト（任意）"
-            onChange={(event) => update('subtitle', event.target.value)}
-          />
-        </section>
+        <IntroFields
+          settings={settings}
+          update={update}
+          introDuration={introDuration}
+          intermediates={intermediates}
+          introStages={introStages}
+        />
 
-        <section {...stylex.props(ui.field)}>
-          <label {...stylex.props(ui.label)} htmlFor="duration">
-            尺: {duration.toFixed(1)} 秒（推定 {estimatedSizeMb.toFixed(1)} MB）
-          </label>
-          <input
-            id="duration"
-            type="range"
-            min={2}
-            max={30}
-            step={0.5}
-            value={duration}
-            onChange={(event) => update('duration', Number(event.target.value))}
-          />
-        </section>
-
-        <section {...stylex.props(ui.field)}>
-          <label {...stylex.props(ui.checkbox)}>
-            <input
-              type="checkbox"
-              checked={introMode === 'on'}
-              onChange={(event) => update('introMode', event.target.checked ? 'on' : 'off')}
-            />
-            入りの演出（光が集まって弾ける）
-          </label>
-          {introMode === 'on' && (
-            <>
-              <label {...stylex.props(ui.label)} htmlFor="introSeconds">
-                入りの長さ: {introSeconds.toFixed(1)} 秒
-                {introDuration < introSeconds - 0.05 &&
-                  `（尺に収まらないので ${introDuration.toFixed(1)} 秒に短縮）`}
-              </label>
-              <input
-                id="introSeconds"
-                type="range"
-                min={0.5}
-                max={8}
-                step={0.1}
-                value={introSeconds}
-                onChange={(event) => update('introSeconds', Number(event.target.value))}
-              />
-              {intermediates.length > 0 && (
-                <>
-                  <span {...stylex.props(ui.label)}>途中で通す色（外すと飛ばす）</span>
-                  <div {...stylex.props(styles.via)}>
-                    {intermediates.map((preset) => (
-                      <label key={preset.id} {...stylex.props(ui.checkbox, styles.viaCheckbox)}>
-                        <input
-                          type="checkbox"
-                          checked={via.includes(preset.id)}
-                          onChange={(event) =>
-                            update(
-                              'via',
-                              event.target.checked
-                                ? [...via, preset.id]
-                                : via.filter((id) => id !== preset.id),
-                            )
-                          }
-                        />
-                        {preset.label}
-                      </label>
-                    ))}
-                    <button
-                      type="button"
-                      {...stylex.props(ui.button, ui.buttonSlim)}
-                      onClick={() =>
-                        update(
-                          'via',
-                          intermediates.map((preset) => preset.id),
-                        )
-                      }
-                    >
-                      全部
-                    </button>
-                    <button
-                      type="button"
-                      {...stylex.props(ui.button, ui.buttonSlim)}
-                      onClick={() => update('via', [])}
-                    >
-                      一気に
-                    </button>
-                  </div>
-                </>
-              )}
-              <p {...stylex.props(ui.notice)}>
-                {introStages.map((stage) => stage.rarity.label).join(' → ')}
-                {' / '}
-                {introDuration.toFixed(2)} 秒
-              </p>
-            </>
-          )}
-        </section>
-
-        <section {...stylex.props(ui.field, ui.fieldRow)}>
-          <label {...stylex.props(ui.fieldSub)}>
-            <span {...stylex.props(ui.label)}>向き</span>
-            <select
-              {...stylex.props(ui.input)}
-              value={orientation}
-              onChange={(event) => {
-                if (isOrientation(event.target.value)) update('orientation', event.target.value)
-              }}
-            >
-              <option value="landscape">横長</option>
-              <option value="portrait">縦長</option>
-            </select>
-          </label>
-          <label {...stylex.props(ui.fieldSub)}>
-            <span {...stylex.props(ui.label)}>サイズ</span>
-            <select
-              {...stylex.props(ui.input)}
-              value={sizeId}
-              onChange={(event) => update('sizeId', event.target.value)}
-            >
-              {SIZE_PRESETS.map((preset) => {
-                const frame = resolveFrameSize(preset, orientation)
-                return (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label} ({frame.width}×{frame.height})
-                  </option>
-                )
-              })}
-            </select>
-          </label>
-        </section>
-
-        <section {...stylex.props(ui.field, ui.fieldRow)}>
-          <label {...stylex.props(ui.fieldSub)}>
-            <span {...stylex.props(ui.label)}>fps</span>
-            <select
-              {...stylex.props(ui.input)}
-              value={fps}
-              onChange={(event) => update('fps', Number(event.target.value))}
-            >
-              {FPS_OPTIONS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label {...stylex.props(ui.fieldSub)}>
-            <span {...stylex.props(ui.label)}>ブラー</span>
-            <select
-              {...stylex.props(ui.input)}
-              value={motionBlur}
-              onChange={(event) => update('motionBlur', Number(event.target.value))}
-            >
-              {MOTION_BLUR_OPTIONS.map((option) => (
-                <option key={option.samples} value={option.samples}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label {...stylex.props(ui.fieldSub)}>
-            <span {...stylex.props(ui.label)}>画質</span>
-            <select
-              {...stylex.props(ui.input)}
-              value={qualityId}
-              onChange={(event) => update('qualityId', event.target.value)}
-            >
-              {QUALITY_PRESETS.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </section>
-
-        <section {...stylex.props(ui.field, ui.fieldRow)}>
-          <label {...stylex.props(ui.fieldSub)}>
-            <span {...stylex.props(ui.label)}>パーティクルの種</span>
-            <div {...stylex.props(ui.inputRow)}>
-              <input
-                type="number"
-                {...stylex.props(ui.input)}
-                value={seed}
-                min={0}
-                step={1}
-                onChange={(event) =>
-                  update('seed', Math.max(0, Math.floor(Number(event.target.value) || 0)))
-                }
-              />
-              <button
-                type="button"
-                {...stylex.props(ui.button)}
-                title="別の配置を引き直す"
-                onClick={() => update('seed', drawSeed())}
-              >
-                🎲
-              </button>
-            </div>
-          </label>
-        </section>
-
-        <section {...stylex.props(ui.field)}>
-          <label {...stylex.props(ui.checkbox)}>
-            <input
-              type="checkbox"
-              checked={loop}
-              onChange={(event) => update('loop', event.target.checked)}
-            />
-            ループ用（最後のフェードアウトを省く）
-          </label>
-        </section>
+        <OutputFields settings={settings} update={update} />
 
         <section {...stylex.props(ui.field)}>
           <button
