@@ -18,7 +18,7 @@ import { PreviewCanvas } from './components/PreviewCanvas.tsx'
 import { RarityPicker } from './components/RarityPicker.tsx'
 import { toErrorMessage } from './errors.ts'
 import { canExportTransparentWebm, exportWebm } from './export/webm.ts'
-import { drawSeed, loadSettings, saveSettings } from './settings.ts'
+import { DEFAULT_SETTINGS, drawSeed, loadSettings, saveSettings } from './settings.ts'
 import { colors } from './theme.stylex.ts'
 import type { Artwork, Orientation } from './types.ts'
 import { QUALITY_PRESETS, SIZE_PRESETS, isOrientation, resolveFrameSize } from './types.ts'
@@ -221,6 +221,7 @@ export function App() {
   const [loop, setLoop] = useState(INITIAL.loop)
   const [seed, setSeed] = useState(INITIAL.seed)
   const [background, setBackground] = useState<PreviewBackground>('checker')
+  const [resetArmed, setResetArmed] = useState(false)
 
   const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -268,6 +269,15 @@ export function App() {
     loop,
     seed,
   ])
+
+  // 「もう一度押すと戻る」状態を置きっぱなしにしない。
+  // 次に開いたときに構えたままだと、1 押しで消えたように見えてしまう
+  useEffect(() => {
+    const timer = resetArmed ? setTimeout(() => setResetArmed(false), 4000) : null
+    return () => {
+      if (timer !== null) clearTimeout(timer)
+    }
+  }, [resetArmed])
 
   // 書き出し結果の URL は差し替えのたびに解放する
   useEffect(() => {
@@ -379,6 +389,36 @@ export function App() {
   }
 
   const isExporting = progress !== null
+
+  /**
+   * 設定一式を既定値へ戻す。アートワークは設定ではないので残す。
+   *
+   * 押し間違いでカード名や seed を失うと戻せないため、2 回押させる。
+   * ブラウザの confirm はプレビューの再生を止めてしまうので使わない。
+   */
+  const handleReset = () => {
+    if (!resetArmed) {
+      setResetArmed(true)
+      return
+    }
+    setResetArmed(false)
+    setRarityId(DEFAULT_SETTINGS.rarityId)
+    setBadge(DEFAULT_SETTINGS.badge)
+    setTitle(DEFAULT_SETTINGS.title)
+    setSubtitle(DEFAULT_SETTINGS.subtitle)
+    setDuration(DEFAULT_SETTINGS.duration)
+    setFps(DEFAULT_SETTINGS.fps)
+    setIntroMode(DEFAULT_SETTINGS.introMode)
+    setIntroSeconds(DEFAULT_SETTINGS.introSeconds)
+    setMotionBlur(DEFAULT_SETTINGS.motionBlur)
+    // 既定値の配列をそのまま渡すと、あとでチェックを外したときに既定値ごと変わる
+    setVia([...DEFAULT_SETTINGS.via])
+    setOrientation(DEFAULT_SETTINGS.orientation)
+    setSizeId(DEFAULT_SETTINGS.sizeId)
+    setQualityId(DEFAULT_SETTINGS.qualityId)
+    setLoop(DEFAULT_SETTINGS.loop)
+    setSeed(DEFAULT_SETTINGS.seed)
+  }
 
   return (
     <div {...stylex.props(styles.app)}>
@@ -671,6 +711,17 @@ export function App() {
             </p>
           )}
           {error && <p {...stylex.props(ui.notice, ui.noticeError)}>{error}</p>}
+        </section>
+
+        <section {...stylex.props(ui.field)}>
+          <button
+            type="button"
+            {...stylex.props(ui.button, ui.buttonSlim)}
+            onClick={handleReset}
+            disabled={isExporting}
+          >
+            {resetArmed ? 'もう一度押すと戻ります' : '↺ 設定を規定に戻す'}
+          </button>
         </section>
       </aside>
 
