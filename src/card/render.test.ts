@@ -27,6 +27,12 @@ import { TEST_FRAME, TEST_TIMES, buildTestScene } from './fixtures.ts'
 import { RARITY_PRESETS } from './rarity.ts'
 import { renderFrameBlurred } from './render.ts'
 
+/** 縁を調べる時刻の刻み（秒）。細かくするほど遅くなる。 */
+const EDGE_SCAN_STEP = 0.5
+
+/** 縁の走査に許す時間（ミリ秒）。 */
+const EDGE_SCAN_TIMEOUT_MS = 120_000
+
 /** CI かどうか。ワークフローの側で `VITE_CI` を渡している。 */
 const isCI = Boolean(import.meta.env.VITE_CI)
 
@@ -120,14 +126,20 @@ describe('renderFrameBlurred', () => {
     expect([...second.data]).toEqual([...first.data])
   })
 
-  it('どのレアリティでもフレームの縁は透明のまま', () => {
-    // 端に光が残ると、配信画面に四角い板が乗る。演出を足すたびに壊れうるので、
-    // 尺全体を粗く走査して押さえておく
-    for (const preset of RARITY_PRESETS) {
-      for (let time = 0; time <= 8; time += 0.25) {
-        const image = renderOnce(preset.id, time)
-        expect(edgeAlpha(image.data, image.width, image.height)).toBe(0)
+  it(
+    'どのレアリティでもフレームの縁は透明のまま',
+    () => {
+      // 端に光が残ると、配信画面に四角い板が乗る。演出を足すたびに壊れうるので、
+      // 尺全体を粗く走査して押さえておく
+      for (const preset of RARITY_PRESETS) {
+        for (let time = 0; time <= 8; time += EDGE_SCAN_STEP) {
+          const image = renderOnce(preset.id, time)
+          expect(edgeAlpha(image.data, image.width, image.height)).toBe(0)
+        }
       }
-    }
-  })
+    },
+    // CI のランナーには GPU が無く、canvas がソフトウェア描画になるぶん
+    // 手元より桁違いに遅い。既定の 15 秒では 100 フレームも描けずに落ちる
+    EDGE_SCAN_TIMEOUT_MS,
+  )
 })
