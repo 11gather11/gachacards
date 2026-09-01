@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>使い方｜GachaCards</title>
+    <meta
+      name="description"
+      content="画像 1 枚から、レアリティ演出つきのカードが動く透過 WebM を作って、Streamlabs のアラートに設定するまでの手順。"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#0d1017" />
+    <meta name="robots" content="index, follow" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      body {
+        margin: 0 auto;
+        padding: 40px 20px 80px;
+        max-width: 720px;
+        background: #0d1017;
+        color: #e6ebf5;
+        font-family: 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+        font-size: 15px;
+        line-height: 1.9;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+
+      h2 {
+        margin: 44px 0 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #2a3242;
+        font-size: 17px;
+      }
+
+      h3 {
+        margin: 28px 0 8px;
+        font-size: 15px;
+      }
+
+      p,
+      ul,
+      ol {
+        margin: 12px 0;
+      }
+
+      li {
+        margin: 6px 0;
+      }
+
+      a {
+        color: #ffd24d;
+      }
+
+      code {
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: #1d2432;
+        font-size: 13px;
+      }
+
+      pre {
+        overflow-x: auto;
+        margin: 12px 0;
+        padding: 14px 16px;
+        border: 1px solid #2a3242;
+        border-radius: 8px;
+        background: #151a24;
+      }
+
+      pre code {
+        padding: 0;
+        background: none;
+        line-height: 1.7;
+      }
+
+      /* 一番言いたいことなので、本文から浮かせる */
+      .lead {
+        margin: 24px 0;
+        padding: 16px 18px;
+        border: 1px solid #2a3242;
+        border-radius: 10px;
+        background: #151a24;
+      }
+
+      /* 表は横幅を超えることがあるので、ページごと横に伸びないよう個別に流す */
+      .scroll {
+        overflow-x: auto;
+        margin: 16px 0;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #2a3242;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      th {
+        color: #94a1b8;
+        font-weight: 600;
+        font-size: 13px;
+      }
+
+      /* レアリティ表の一列目は、色名だけでも段が分かるように色を当てる */
+      .r-white {
+        color: #e6ebf5;
+      }
+      .r-blue {
+        color: #6fb4ff;
+      }
+      .r-green {
+        color: #6ee7a8;
+      }
+      .r-red {
+        color: #ff7a7a;
+      }
+      .r-gold {
+        color: #ffd24d;
+      }
+      .r-rainbow {
+        background: linear-gradient(90deg, #ff7a7a, #ffd24d, #6ee7a8, #6fb4ff, #c98cff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .updated {
+        color: #94a1b8;
+        font-size: 13px;
+      }
+
+      footer {
+        margin-top: 56px;
+        padding-top: 20px;
+        border-top: 1px solid #2a3242;
+        color: #94a1b8;
+        font-size: 13px;
+      }
+
+      footer a {
+        margin-right: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>GachaCards の使い方</h1>
+    <p class="updated">最終更新: 2026年9月1日</p>
+
+    <div class="lead">
+      好きな画像を 1 枚入れると、パチンコの保留玉のようなレアリティ演出つきでカードが登場する
+      <strong>背景が透明な動画（透過 WebM）</strong>を作れます。Streamlabs
+      のアラート画像に設定すると、フォローやサブスクのたびにその演出が流れます。
+    </div>
+
+    <h2>はじめに用意するもの</h2>
+    <ul>
+      <li><strong>パソコンの Chrome か Edge</strong>（書き出しにこのブラウザの機能を使います）</li>
+      <li><strong>カードにしたい画像を 1 枚</strong>（イラスト、ロゴ、アイコン、写真など）</li>
+    </ul>
+    <p>
+      インストールや登録は要りません。画像はあなたのブラウザの中だけで処理され、こちらのサーバには送られません。
+    </p>
+
+    <h2>作る手順</h2>
+    <ol>
+      <li>
+        左のパネルに画像をドロップします。カードの枠を隙間なく埋めるまで拡大され、はみ出したぶんは切り取られます
+      </li>
+      <li>レアリティを選びます（白 → 青 → 緑 → 赤 → 金 → 虹の順に派手になります）</li>
+      <li>向き・尺・サイズなどを決めます</li>
+      <li><strong>「透過 WebM を書き出す」</strong>を押します</li>
+      <li>市松模様の上で結果が再生されるので、気に入ったら<strong>「保存」</strong>を押します</li>
+    </ol>
+    <p>
+      書き出しただけではファイルは保存されません。何本か試して、良かったものだけ保存する流れにしてあります。
+    </p>
+
+    <h2>レアリティの選び方</h2>
+    <p>
+      レアリティは、パチンコの保留玉の色（白 → 青 → 緑 → 赤 → 金 → 虹）をそのまま使っています。
+      上に行くほど、枠の色・光り方・震え・光る粒の量が派手になります。
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>色</th>
+            <th>バッジ</th>
+            <th>登場のしかた</th>
+            <th>主な演出</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="r-white">白</td>
+            <td>N</td>
+            <td>フェード</td>
+            <td>光沢 2 回、粒がわずかに舞う</td>
+          </tr>
+          <tr>
+            <td class="r-blue">青</td>
+            <td>R</td>
+            <td>せり上がり</td>
+            <td>青いグロー、粒が舞う</td>
+          </tr>
+          <tr>
+            <td class="r-green">緑</td>
+            <td>SR</td>
+            <td>せり上がり</td>
+            <td>光沢 3 回、粒が増える、衝撃波 1 本</td>
+          </tr>
+          <tr>
+            <td class="r-red">赤</td>
+            <td>SSR</td>
+            <td>ズーム</td>
+            <td>集中線、衝撃波 3 本、震え、火花</td>
+          </tr>
+          <tr>
+            <td class="r-gold">金</td>
+            <td>UR</td>
+            <td>叩きつけ</td>
+            <td>集中線、金の枠、金粉、強い閃光</td>
+          </tr>
+          <tr>
+            <td class="r-rainbow">虹</td>
+            <td>LR</td>
+            <td>叩きつけ</td>
+            <td>虹の枠、虹のグロー、オーロラ、周回光</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      段の違いは、数値を少しずつ変えるのではなく<strong>上位でしか出ない演出</strong>で分けてあります。
+      視聴者が「何が出たか」で段を読み取れるようにするためです。
+    </p>
+    <ul>
+      <li><strong>衝撃波が出たら緑（SR）以上</strong>。緑は 1 本、赤より上は 3 本重なります</li>
+      <li><strong>集中線が走ったら赤（SSR）以上</strong></li>
+      <li><strong>叩きつけ（バウンドする登場）なら金（UR）以上</strong></li>
+    </ul>
+
+    <h3>バッジの文字を変える</h3>
+    <p>
+      N・R・SR といった表記は初期値にすぎません。「ランク表記」の欄から
+      「激アツ」「確定」「初見さん」など自由に書き換えられます。空にすればバッジ自体が出なくなり、 ↺
+      を押すとレアリティごとの初期値に戻ります。
+    </p>
+
+    <h2>入りの演出（昇格）</h2>
+    <p>
+      カードが出る前に、光が中心に集まって膨らみ、弾けた瞬間にカードが現れる前振りを挟めます
+      （「入りの演出」のチェックボックス）。
+    </p>
+    <p>
+      光は<strong>必ず白から始まり</strong>、保留カラーを 1 段ずつ上がって本来の色に着地します。
+      「色が変わった瞬間にアツくなる」あの感じを、段数のぶんだけ繰り返すことになります。
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>レアリティ</th>
+            <th>色の道のり</th>
+            <th>段数</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="r-blue">青</td>
+            <td>白 → 青</td>
+            <td>1</td>
+          </tr>
+          <tr>
+            <td class="r-green">緑</td>
+            <td>白 → 青 → 緑</td>
+            <td>2</td>
+          </tr>
+          <tr>
+            <td class="r-red">赤</td>
+            <td>白 → 青 → 緑 → 赤</td>
+            <td>3</td>
+          </tr>
+          <tr>
+            <td class="r-gold">金</td>
+            <td>白 → 青 → 緑 → 赤 → 金</td>
+            <td>4</td>
+          </tr>
+          <tr>
+            <td class="r-rainbow">虹</td>
+            <td>白 → 青 → 緑 → 赤 → 金 → 虹</td>
+            <td>5</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      <strong>前振りの長さはスライダーで決めます（0.5〜8 秒、初期値 2 秒）。</strong>
+      レアリティでは変わりません。同じ長さの中で上位ほど多くの段を通るので、
+      上位ほど色が速く連続して上がっていきます。
+    </p>
+
+    <h3>通す色を選ぶ</h3>
+    <p>
+      白と目的の色は必ず通ります。その間のどの色を通すかは、チェックボックスで 1 色ずつ選べます。
+    </p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>虹を選んだ場合</th>
+            <th>道のり</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>すべてチェック</td>
+            <td>白 → 青 → 緑 → 赤 → 金 → 虹</td>
+          </tr>
+          <tr>
+            <td>青と赤だけ</td>
+            <td>白 → 青 → 赤 → 虹</td>
+          </tr>
+          <tr>
+            <td>すべて外す</td>
+            <td>白 → 虹（一撃）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      前振りの長さは通る色の数では変わらないので、色を減らすほど 1 段あたりの間隔が広がります。
+      白でいちばん長く溜めてから一気に変わるので、<strong>変化の瞬間のインパクトは「一気に」が最大</strong>です。
+      逆に、段を全部通せば「上がった、まだ上がった」という積み上がりが出ます。
+    </p>
+
+    <h2>画像の切り取り位置</h2>
+    <p>
+      画像はカードの枠を埋めるまで拡大されるので、縦横比が枠と違えば必ずどちらかがはみ出します。
+      縦長の写真を横長のカードに入れると上下が切れ、顔が入らないことがあります。
+    </p>
+    <p>
+      画像を入れると、アートワークの下に<strong>切り取り位置</strong>のつまみが出ます。
+      左へ寄せると画像の上（横長の画像なら左）が残ります。
+      はみ出していない向きのつまみは出ません（動かしても何も起きないつまみを並べないためです）。
+    </p>
+
+    <h2>同じカードをあとで作り直す</h2>
+    <p>
+      光る粒の配置は<strong>「パーティクルの種」（seed）</strong>だけで決まります。 同じ seed
+      を入れれば、何日後でも、別のブラウザでも、まったく同じ配置になります。
+    </p>
+    <ul>
+      <li>seed は数値で表示されるので、控えておくか、あとから手で入力し直せます</li>
+      <li>🎲 ボタンで新しい seed を引けます。値が見えているので、引き直しても元に戻せます</li>
+      <li>
+        書き出したファイル名に seed が入ります（例:
+        <code>dragon-gold-s70883.webm</code>）。できあがったファイルからでも辿れます
+      </li>
+      <li>
+        レアリティ・尺・サイズなどの設定はブラウザに自動保存され、次に開いたときに復元されます。
+        画像だけは容量の都合で保存されないので入れ直してください
+      </li>
+    </ul>
+
+    <h2>Streamlabs に設定する</h2>
+    <ol>
+      <li>
+        Streamlabs のダッシュボード → <strong>Alert Box</strong> → 対象のアラート（Follow / Sub /
+        Donation など）を開きます
+      </li>
+      <li><strong>Image</strong> に、書き出した <code>.webm</code> をアップロードします</li>
+      <li>
+        <strong>Alert Duration</strong> を、書き出した尺と同じかそれ以上にします。
+        短いと演出の途中で消えてしまいます
+      </li>
+    </ol>
+    <p>アラートはブラウザ（Chromium）で再生されるため、透過がそのまま効いて背景が抜けます。</p>
+
+    <h3>サイズは 800×600 のままが楽</h3>
+    <p>
+      サイズの初期値を <strong>800×600</strong>（「標準（アラート向け）」）にしてあるのは、
+      Streamlabs のアラートボックスの慣習サイズがこれだからです。ここに合わせておくと
+      <strong>Image Size 100%</strong> で収まります。
+    </p>
+    <p>
+      それより大きいプリセットを選ぶと 100% でははみ出すので、Image Size を下げるか、
+      配信ソフト側のブラウザソースを広げることになります。
+    </p>
+
+    <h3>文字がカードから離れて見えるとき</h3>
+    <p>
+      アラートの文字は動画の下に置かれますが、この素材は光が伸びるぶん下側に透明な余白があるので、
+      そのままだと文字が離れて見えます。Streamlabs の<strong>カスタム CSS</strong> で寄せられます。
+    </p>
+    <pre><code>#alert-text {
+  transform: translateY(-130px);
+}</code></pre>
+    <p>
+      数値は表示している大きさに比例します。800×600 を 100% で使う場合、カード下の余白は (600 − 320)
+      ÷ 2 = 140px なので、-130px あたりから調整してみてください。
+    </p>
+    <p>セレクタが合っているか確かめたいときは、いったんこれを入れて赤い帯が出るかを見ます。</p>
+    <pre><code>#alert-text {
+  outline: 3px solid red;
+  background: rgba(255, 0, 0, 0.4);
+}</code></pre>
+    <p>
+      <code>margin</code> ではなく <code>transform</code> を使っています。Streamlabs
+      のアラートは画像と文字が単純な縦積みになっていないため
+      <code>margin</code> は効かないことがありますが、
+      <code>transform</code>
+      はレイアウトの計算に関係なく描画位置だけをずらすので、構造に関わらず動きます。
+    </p>
+
+    <h2>細かい設定</h2>
+
+    <h3>向き</h3>
+    <p>
+      横長と縦長を選べます。配信のアラート枠は横長なことが多いので、初期値は横長です。
+      カードの縦横比は 2:3 のままで、向きだけが入れ替わります（横長ならカードが寝た形になります）。
+    </p>
+
+    <h3>尺とファイルサイズ</h3>
+    <p>
+      尺は 2〜30
+      秒です。尺のスライダーの横に推定サイズが出るので、アップロードできる大きさかどうかは
+      書き出す前に分かります。Streamlabs 側は 300 秒まで指定できますが、それだけの長さになると
+      書き出し時間もファイルサイズも実用的でなくなるため、このアプリでは 30 秒までにしてあります。
+    </p>
+
+    <h3>画質</h3>
+    <p>
+      軽い（3 Mbps）・標準（6 Mbps）・高画質（12 Mbps）から選べます。
+      アップロードの上限に引っかかるときは、画質を下げるか尺を短くします。
+    </p>
+
+    <h3>ブラー（モーションブラー）</h3>
+    <p>
+      なし / 弱 2x / 中 4x / 強 8x から選べます（初期値は弱）。動きの速いところに残像が付き、
+      なめらかに見えます。強くするほど書き出しに時間がかかります。
+      プレビューにも同じブラーが掛かるので、画面で見たとおりのものが出ます。
+    </p>
+
+    <h3>プレビュー背景</h3>
+    <p>
+      市松・暗い・明るい・配信の 4 つを切り替えられます。透明であることを確かめるなら市松、
+      実際の配信画面での見え方を想像するなら、近い明るさのものを選んでください。
+      ここでの選択は書き出す動画には影響しません。
+    </p>
+
+    <h2>うまくいかないとき</h2>
+
+    <h3>プレビューが真っ黒に見える（iPhone・iPad）</h3>
+    <p>
+      iPhone や iPad は透過付きの WebM を再生できないため、プレビューの背景が黒く出ます。
+      <strong>ファイル自体は正しく透過している</strong>ので、そのまま保存して Streamlabs
+      で使えます。 見た目を確かめたい場合は、パソコンの Chrome か Edge で開いてください。同じ端末で
+      Chrome や Edge に変えても、中身は Safari と同じ仕組みなので結果は変わりません。
+    </p>
+
+    <h3>「このブラウザでは書き出せません」と出る</h3>
+    <p>
+      書き出しに必要な機能（VP9 の透過対応）が無いブラウザです。パソコンの Chrome か Edge
+      で開いてください。
+    </p>
+
+    <h3>顔や見せたい部分が切れている</h3>
+    <p>「切り取り位置」のつまみで寄せられます。上の「画像の切り取り位置」をご覧ください。</p>
+
+    <h3>演出の途中でアラートが消える</h3>
+    <p>
+      Streamlabs の
+      <strong>Alert Duration</strong> が動画の尺より短いときに起きます。尺以上にしてください。
+    </p>
+
+    <h3>アラートが画面からはみ出す</h3>
+    <p>
+      800×600 より大きいサイズで書き出したときに起きます。Image Size を下げるか、
+      次からは「標準（アラート向け）」で書き出してください。
+    </p>
+
+    <h2>よくある質問</h2>
+
+    <h3>入れた画像はどこかに送られますか？</h3>
+    <p>
+      送られません。読み込みも加工も書き出しも、すべてお使いのブラウザの中で完結します。 詳しくは<a
+        href="/privacy.html"
+        >プライバシーポリシー</a
+      >をご覧ください。
+    </p>
+
+    <h3>作った動画は配信で使っていいですか？</h3>
+    <p>
+      自由に使えます。素材はあなたが入れた画像だけで、こちらは何の権利も主張しません。
+      入れる画像そのものについては、あなたが使える画像かどうかをご確認ください。
+    </p>
+
+    <h3>料金はかかりますか？</h3>
+    <p>かかりません。登録も不要です。</p>
+
+    <h3>スマートフォンでも使えますか？</h3>
+    <p>書き出しはできますが、画面が狭く、時間もかかります。パソコンでの利用を想定しています。</p>
+
+    <footer>
+      <a href="/">← GachaCards に戻る</a>
+      <a href="/privacy.html">プライバシーポリシー</a>
+    </footer>
+  </body>
+</html>

@@ -405,6 +405,14 @@ GitHub 側は secrets ではなく変数（`vars`）に置いている。
 Web Analytics → サイトを追加 → ホスト名 → 完了 → 出てきたトークンを、
 リポジトリの Settings → Variables に `CF_ANALYTICS_TOKEN` として登録する。
 
+## 使い方ページ
+
+`public/guide.html` に置いてある。プライバシーポリシーと同じく素の HTML。
+
+配信者向けに書いてあり、この README の内容とは読み手が違う。README は作る側の
+記録で、あちらは使う側の手順。同じことを二度書いている箇所があるので、
+仕様を変えたら両方を直すこと。
+
 ## プライバシーポリシー
 
 `public/privacy.html` に置いてある。素の HTML で、アプリの JS は読み込まない。

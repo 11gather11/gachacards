@@ -163,6 +163,10 @@ const styles = stylex.create({
     color: colors.textDim,
     fontSize: 11,
   },
+  footerLinks: {
+    display: 'flex',
+    gap: 10,
+  },
   footerLink: {
     color: colors.textDim,
     textDecoration: 'underline',
@@ -473,9 +477,14 @@ export function App() {
         </section>
 
         <footer {...stylex.props(styles.footer)}>
-          <a href="/privacy.html" {...stylex.props(styles.footerLink)}>
-            プライバシーポリシー
-          </a>
+          <div {...stylex.props(styles.footerLinks)}>
+            <a href="/guide.html" {...stylex.props(styles.footerLink)}>
+              使い方
+            </a>
+            <a href="/privacy.html" {...stylex.props(styles.footerLink)}>
+              プライバシーポリシー
+            </a>
+          </div>
           <span>画像はブラウザの外に出ません</span>
         </footer>
       </aside>
