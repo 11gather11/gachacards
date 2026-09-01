@@ -55,8 +55,13 @@ jobs:
       - name: テスト
         run: vp test run --exclude '**/fingerprint.test.ts'
 
+      # ビーコンはトークンが渡ったときだけ差し込まれる。プルリクのビルドや
+      # 手元では未設定なので、集計に載るのは本番だけになる。
+      # ページに載せて使う公開値なので secrets ではなく vars に置く
       - name: 本番ビルド
         run: vp run build
+        env:
+          CF_ANALYTICS_TOKEN: ${{ vars.CF_ANALYTICS_TOKEN }}
 
       # main への push のときだけ出す。プルリクではビルドが通るところまで。
       #

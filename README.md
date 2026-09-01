@@ -394,13 +394,16 @@ favicon は手書きの SVG（`public/favicon.svg`）。16x16 まで縮むので
 
 Cloudflare Web Analytics を使う。Cookie を使わないので同意バナーが要らない。
 
-サイトが Cloudflare 経由なので、**ダッシュボードで登録するだけでビーコンが
-自動で挿入される**。コードは要らない。
+ビーコンは JS スニペットで入れる。ドメインは Cloudflare 経由だが、それだけでは
+挿入されない。ダッシュボードの「サイトを追加」でホスト名を入れると
+「JS スニペットをインストールする必要があります」と出る。
 
-Web Analytics → サイトを追加 → `gachacards.11gather11.com` → 完了
+トークンは `CF_ANALYTICS_TOKEN` で渡す。渡さなければ何も差し込まれないので、
+手元とプルリクのビルドは集計に載らない。ページに載せて使う公開値なので、
+GitHub 側は secrets ではなく変数（`vars`）に置いている。
 
-配信元が `Cache-Control` に `no-transform` を付けていると自動挿入が効かないが、
-この Worker は `public, max-age=0, must-revalidate` なので問題ない。
+Web Analytics → サイトを追加 → ホスト名 → 完了 → 出てきたトークンを、
+リポジトリの Settings → Variables に `CF_ANALYTICS_TOKEN` として登録する。
 
 ## プライバシーポリシー
 

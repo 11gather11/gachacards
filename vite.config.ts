@@ -1,7 +1,42 @@
 import stylex from '@stylexjs/unplugin/vite'
 import react from '@vitejs/plugin-react'
+import type { Plugin } from 'vite-plus'
 import { defineConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
+
+/**
+ * Cloudflare Web Analytics のビーコンを、トークンが渡されたときだけ差し込む。
+ *
+ * Cookie を使わないので同意バナーが要らない。トークンはページに載せて使う
+ * 公開値で、秘密ではない。
+ *
+ * 素の `%VITE_...%` を HTML に直書きすると、環境変数が無いビルドでその文字列が
+ * そのまま残り、毎回無効なトークンでリクエストが飛ぶ。差し込みを条件にすれば、
+ * 未設定のときは何も出ない。
+ *
+ * 独自ドメインを Cloudflare 経由にしている場合は、ダッシュボードから
+ * 自動で挿す設定もある。その場合はこの環境変数を渡さなければよい。
+ */
+function cloudflareAnalytics(): Plugin {
+  return {
+    name: 'cloudflare-web-analytics',
+    transformIndexHtml() {
+      const token = process.env.CF_ANALYTICS_TOKEN
+      if (!token) return []
+      return [
+        {
+          tag: 'script',
+          injectTo: 'head',
+          attrs: {
+            defer: true,
+            src: 'https://static.cloudflareinsights.com/beacon.min.js',
+            'data-cf-beacon': JSON.stringify({ token }),
+          },
+        },
+      ]
+    },
+  }
+}
 
 export default defineConfig(({ mode }) => ({
   // StyleX はビルド時に静的 CSS へ畳む。react より先に置く必要がある。
@@ -13,6 +48,7 @@ export default defineConfig(({ mode }) => ({
       runtimeInjection: false,
     }),
     react(),
+    cloudflareAnalytics(),
   ],
   // カードの描画は OffscreenCanvas・float16 キャンバス・コニックグラデーション・
   // canvas の blur フィルタに依存している。どれも Node には無いので、
