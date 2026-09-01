@@ -362,6 +362,18 @@ main に push すると GitHub Actions が回り、整形・lint・型チェッ�
 手元から出したいときは `pnpm exec wrangler deploy`。
 何が上がるかだけ見たいなら `--dry-run` を付ける。
 
+### 独自ドメインは手で割り当てる
+
+`gachacards.11gather11.com` は Cloudflare のダッシュボードで割り当てている
+（Workers & Pages → 対象の Worker → Settings → Domains & Routes → Add → Custom domain）。
+
+`wrangler.jsonc` に `routes` と `custom_domain: true` を書けば自動で作れるが、
+そうすると CI のトークンに**ゾーン全体の DNS 書き込み権限**が要る。
+`11gather11.com` には他のものも載っているのに、設定は一度きりなのに、
+毎回の push で走るトークンの権限だけが広がるので割に合わない。
+
+`routes` を書かない限り、wrangler はドメインの割り当てに触らない。
+
 ## 公開用の画像
 
 OGP 画像は、このツール自身の描画コードで作っている。イラストを別に用意するより、
