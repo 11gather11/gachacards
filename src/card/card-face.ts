@@ -419,26 +419,46 @@ function drawLabels(ctx: Canvas2dContext, scene: CardScene, box: CardBox): void 
 
   if (!badge) return
 
-  // バッジは左上に置く。文字幅に合わせてピルの幅を決める
-  ctx.font = `800 ${box.unit * 0.058}px system-ui, sans-serif`
+  // バッジは左上に置く。文字幅に合わせてピルの幅を決める。
+  //
+  // 配信では画面の隅に小さく出すので、カード名と同じくらいの大きさが要る。
+  // レアリティは一目で分かってほしい情報なのに、以前は 0.058 とカード名
+  // （0.098）より小さく、縮めると真っ先に読めなくなっていた
+  ctx.font = `800 ${box.unit * 0.09}px system-ui, sans-serif`
   const textWidth = ctx.measureText(badge).width
-  const padding = box.unit * 0.04
+  const padding = box.unit * 0.05
   const pillWidth = textWidth + padding * 2
-  const pillHeight = box.unit * 0.1
+  const pillHeight = box.unit * 0.15
   const pillX = -box.width / 2 + box.unit * 0.055
   const pillY = -box.height / 2 + box.unit * 0.055
+
+  // 虹だけは枠と同じく虹色にする。枠のコニックグラデーションはカード中心が
+  // 原点なので、左上のバッジに掛けると 1 色しか乗らない。ピルの幅に渡す
+  // 横方向のグラデーションにして、小さくても虹だと分かるようにする。
+  //
+  // 動かさないのは、この大きさで色が流れると縮めたときに滲んで読みにくいため。
+  // 動きは枠と周回光が持っている
+  const badgeStyle = rarity.rainbowFrame
+    ? (() => {
+        const gradient = ctx.createLinearGradient(pillX, 0, pillX + pillWidth, 0)
+        rarity.frameColors.forEach((color, index) => {
+          gradient.addColorStop(index / (rarity.frameColors.length - 1), color)
+        })
+        return gradient
+      })()
+    : rarity.frameColors[0]!
 
   ctx.beginPath()
   ctx.roundRect(pillX, pillY, pillWidth, pillHeight, pillHeight / 2)
   ctx.fillStyle = 'rgba(0,0,0,0.55)'
   ctx.fill()
-  ctx.strokeStyle = rarity.frameColors[0]!
-  ctx.lineWidth = box.unit * 0.007
+  ctx.strokeStyle = badgeStyle
+  ctx.lineWidth = box.unit * 0.009
   ctx.stroke()
 
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillStyle = rarity.frameColors[0]!
+  ctx.fillStyle = badgeStyle
   ctx.fillText(badge, pillX + pillWidth / 2, pillY + pillHeight / 2)
 }
 

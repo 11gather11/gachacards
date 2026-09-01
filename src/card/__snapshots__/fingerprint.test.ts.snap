@@ -39,7 +39,7 @@ exports[`renderFrameBlurred の指紋 > blue の 2.95 秒が変わっていな�
 exports[`renderFrameBlurred の指紋 > blue の 4.50 秒が変わっていない 1`] = `
 "000000000000|000000000000
 000111111000|005666666500
-008eeeeee800|039666666930
+008eeeeee800|039766666930
 00bffffffb00|048223322840
 00bffffffb00|048222222840
 00bffffffb00|047122221840
@@ -51,7 +51,7 @@ exports[`renderFrameBlurred の指紋 > blue の 4.50 秒が変わっていな�
 exports[`renderFrameBlurred の指紋 > blue の 7.70 秒が変わっていない 1`] = `
 "000000000000|000000000000
 000111111000|006777777600
-008dddddd800|059666666950
+008dddddd800|059766666950
 00aeeeeeea00|068223322860
 00aeeeeeea00|067222222860
 00aeeeeeea00|067122221860
@@ -87,7 +87,7 @@ exports[`renderFrameBlurred の指紋 > gold の 1.95 秒が変わっていな�
 exports[`renderFrameBlurred の指紋 > gold の 2.95 秒が変わっていない 1`] = `
 "000011110000|00379aa97400
 002577776310|08bccccccb80
-028eefffeb30|4bb8899879b5
+028eefffeb30|4bb9899879b5
 04bffffffe51|8ba4688648b8
 04cffffffe61|8ba479a858b9
 04bffffffe61|8ba3588648b9
@@ -99,7 +99,7 @@ exports[`renderFrameBlurred の指紋 > gold の 2.95 秒が変わっていな�
 exports[`renderFrameBlurred の指紋 > gold の 4.50 秒が変わっていない 1`] = `
 "000000000000|001355553100
 002333333200|05bbbbbbbb50
-019eeeeee910|1ba766789bb1
+019eeeeee910|1ba866789bb1
 02cffffffc20|3b8222457ab3
 02cffffffc20|4b8122246ab4
 02cffffffc20|3b8122234ab3
@@ -111,7 +111,7 @@ exports[`renderFrameBlurred の指紋 > gold の 4.50 秒が変わっていな�
 exports[`renderFrameBlurred の指紋 > gold の 7.70 秒が変わっていない 1`] = `
 "000000000000|002466664200
 002344443200|06bbbbbbbb60
-019dddddd910|2ba7666669b2
+019dddddd910|2ba8666669b2
 02beeeeeeb20|5b82222228b5
 03beeeeeeb30|5b81222218b5
 02beeeeeeb20|5b81222218b5
@@ -147,8 +147,8 @@ exports[`renderFrameBlurred の指紋 > green の 1.95 秒が変わっていな�
 exports[`renderFrameBlurred の指紋 > green の 2.95 秒が変わっていない 1`] = `
 "000001100000|002567765200
 002566665300|05999aa99960
-029effffea30|398666655793
-03cffffffd40|597234432695
+029effffea30|398766655793
+03cffffffd40|597334432695
 04cffffffd40|597234532796
 03cffffffd40|597234432695
 02affffffb30|397445655793
@@ -160,7 +160,7 @@ exports[`renderFrameBlurred の指紋 > green の 4.50 秒が変わっていな�
 "000000000000|000000000000
 001111111100|016788887610
 009eeeeee900|058655544750
-01bffffffb10|067122221660
+01bffffffb10|067222221660
 01bffffffb10|066122221760
 01bffffffb10|066122211760
 009effffe900|057334444850
@@ -172,7 +172,7 @@ exports[`renderFrameBlurred の指紋 > green の 7.70 秒が変わっていな�
 "000000000000|000000000000
 001222222100|017899998710
 008dddddd800|068655544760
-01beeeeeeb10|076122221670
+01beeeeeeb10|077222221670
 01beeeeeeb10|076112211670
 01beeeeeeb10|076122211670
 019dddddd910|067334444760
@@ -207,7 +207,7 @@ exports[`renderFrameBlurred の指紋 > rainbow の 1.95 秒が変わってい�
 exports[`renderFrameBlurred の指紋 > rainbow の 2.95 秒が変わっていない 1`] = `
 "000011110000|0048abba8400
 002577776310|08ddeeddcc90
-028eefffeb30|5cc89aaa89c6
+028eefffeb30|5cc99aaa89c6
 03bffffffe61|8cb4699758c9
 04cffffffe61|8cb47ab858ca
 04bffffffe61|8cb4699747c9
@@ -267,7 +267,7 @@ exports[`renderFrameBlurred の指紋 > red の 1.95 秒が変わっていない
 exports[`renderFrameBlurred の指紋 > red の 2.95 秒が変わっていない 1`] = `
 "000011110000|002578875300
 003577776310|06899aaa9860
-029effffeb30|388767766784
+029effffeb30|388877766784
 04cffffffd51|588356753686
 04cffffffe61|688357864686
 04cffffffe51|687347753686
@@ -279,8 +279,8 @@ exports[`renderFrameBlurred の指紋 > red の 2.95 秒が変わっていない
 exports[`renderFrameBlurred の指紋 > red の 4.50 秒が変わっていない 1`] = `
 "000000000000|000112211000
 001233332100|027888888720
-019eeeeee910|078655444770
-01cffffffc10|186112211681
+019eeeeee910|078755444770
+01cffffffc10|186222211681
 01cffffffc10|186111111681
 01cffffffc10|186112211681
 01affffffa10|077334444770
@@ -291,8 +291,8 @@ exports[`renderFrameBlurred の指紋 > red の 4.50 秒が変わっていない
 exports[`renderFrameBlurred の指紋 > red の 7.70 秒が変わっていない 1`] = `
 "000000000000|000233332000
 001333333100|038888888830
-019dddddd910|088655444780
-02beeeeeeb20|186112211681
+019dddddd910|088755444780
+02beeeeeeb20|186222211681
 02beeeeeeb20|286111111682
 02beeeeeeb20|186112211681
 019dddddd910|087334444780
@@ -327,8 +327,8 @@ exports[`renderFrameBlurred の指紋 > white の 1.95 秒が変わっていな�
 exports[`renderFrameBlurred の指紋 > white の 2.95 秒が変わっていない 1`] = `
 "000000000000|001478874100
 001333333100|05effffffe50
-01aeeeeeea10|1ec888887ce1
-02cffffffc20|3fa334433af3
+01aeeeeeea10|1ec988887ce1
+02cffffffc20|3fb334433af3
 02cffffffc20|4fa234432af4
 02cffffffc20|3fa233332af3
 01aeffffea10|1ec667766ce1
@@ -339,8 +339,8 @@ exports[`renderFrameBlurred の指紋 > white の 2.95 秒が変わっていな�
 exports[`renderFrameBlurred の指紋 > white の 4.50 秒が変わっていない 1`] = `
 "000000000000|000000000000
 000000000000|002333333200
-007dddddd700|00c888877b00
-009ffffff900|00a233332a00
+007dddddd700|00c988877b00
+009ffffff900|00b233332a00
 009ffffff900|00a223322a00
 00affffff900|00a123321a00
 008eeeeee800|00b567666b00
@@ -351,7 +351,7 @@ exports[`renderFrameBlurred の指紋 > white の 4.50 秒が変わっていな�
 exports[`renderFrameBlurred の指紋 > white の 7.70 秒が変わっていない 1`] = `
 "000000000000|000000000000
 000000000000|002444444300
-007cccccc700|01c888877c10
+007cccccc700|01c988877c10
 009eeeeee900|01a233332a10
 009eeeeee900|01a223322a10
 009eeeeee900|01a122221a10
