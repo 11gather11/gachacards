@@ -176,6 +176,9 @@ const supportsFloat16 = ((): boolean => {
 /** 虹のグローを枠色で染める強さ。1 で純色、0 で白のまま。 */
 const GLOW_TINT = 0.7
 
+/** カードの上に乗った粒の濃さ。バッジや名前を隠さないよう落とす。 */
+const PARTICLE_OVER_CARD = 0.35
+
 /** ディザノイズのタイルの一辺（px）。 */
 const NOISE_TILE = 128
 
@@ -868,8 +871,22 @@ function drawFlash(ctx: Canvas2dContext, scene: CardScene, impact: number): void
   ctx.fillRect(-radius, -radius, radius * 2, radius * 2)
 }
 
-/** パーティクルを1枚ずつ描く。形状ごとに描き分ける。 */
-function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): void {
+/**
+ * パーティクルを1枚ずつ描く。形状ごとに描き分ける。
+ *
+ * @param ctx - 描画先。カード中心を原点とした座標系に入っていること
+ * @param scene - 描画するシーン
+ * @param box - カードの矩形。上に乗った粒を薄くするのに使う
+ * @param scale - その時刻のカードの拡大率
+ * @param time - アニメーション先頭からの経過秒
+ */
+function drawParticles(
+  ctx: Canvas2dContext,
+  scene: CardScene,
+  box: CardBox,
+  scale: number,
+  time: number,
+): void {
   for (const particle of scene.particles) {
     const state = particleStateAt(particle, time)
     if (!state || state.alpha <= 0) continue
@@ -884,9 +901,20 @@ function drawParticles(ctx: Canvas2dContext, scene: CardScene, time: number): vo
     const edgeFade = clamp(distanceToEdge / fadeMargin, 0, 1)
     if (edgeFade <= 0) continue
 
+    // カードの上に乗る粒は薄くする。加算合成なので、濃いまま重なると
+    // バッジや名前が読めなくなる。カードの外周で切ると矩形の線が見えるので、
+    // 縁から内側へ少しの幅を使って滑らかに落とす
+    const softness = box.unit * 0.06
+    const insideCard = Math.min(
+      (box.width * scale) / 2 - Math.abs(state.x),
+      (box.height * scale) / 2 - Math.abs(state.y),
+    )
+    const overCard = clamp(insideCard / softness, 0, 1)
+    const cardFade = 1 - overCard * (1 - PARTICLE_OVER_CARD)
+
     ctx.save()
     // カード側のフェードに乗せる。代入すると退場後も粒だけが残る
-    ctx.globalAlpha *= clamp(state.alpha, 0, 1) * edgeFade
+    ctx.globalAlpha *= clamp(state.alpha, 0, 1) * edgeFade * cardFade
     ctx.globalCompositeOperation = 'lighter'
     ctx.translate(state.x, state.y)
     ctx.rotate(state.rotation)
@@ -1215,7 +1243,7 @@ function drawCard(
 
   ctx.restore()
 
-  drawParticles(ctx, scene, time)
+  drawParticles(ctx, scene, box, transform.scale, time)
   drawImpactBurst(ctx, scene, timeline, time)
   drawFlash(ctx, scene, transform.impact)
 
