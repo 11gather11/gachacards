@@ -82,6 +82,13 @@ export async function exportWebm(options: ExportOptions): Promise<ExportResult> 
     target: new BufferTarget(),
   })
 
+  // canvas をそのまま渡す。生のピクセルを読み出して渡す作りも試したが、
+  // GPU から CPU への転送が 1 フレーム 12ms かかり、8 秒の書き出しが
+  // 1.5 秒から 6 秒に伸びるだけで、得るものが無かった。
+  //
+  // 「Chromium は canvas から VideoFrame を作る段で色をアルファで乗算する」
+  // ように見えたのは、Playwright のヘッドレスでの話だった。実物の Chrome では
+  // 乗算されない。書き出しの忠実度をヘッドレスで測ってはいけない
   const source = new CanvasSource(canvas, {
     codec: 'vp9',
     bitrate,
