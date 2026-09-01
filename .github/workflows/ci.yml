@@ -35,8 +35,10 @@ jobs:
       # Node では動かない。テストは実物の Chromium の中で走らせる。
       #
       # 毎回入れ直すと 33 秒かかっていた（apt に 19 秒、ダウンロードに 13 秒）。
-      # ブラウザ本体はキャッシュし、--with-deps も落とす。ubuntu-latest には
-      # 必要な共有ライブラリが最初から入っているので、apt を回す必要がない
+      # ブラウザ本体はキャッシュに載せて、ダウンロードのぶんを省く。
+      #
+      # apt は webkit の分だけ回す。chromium に必要な共有ライブラリは
+      # ubuntu-latest に最初から入っているが、webkit の分は入っていない
       - name: ブラウザのキャッシュ
         uses: actions/cache@v5.1.0
         with:
@@ -44,7 +46,9 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: ブラウザを用意する
-        run: vp exec playwright install chromium webkit
+        run: |
+          vp exec playwright install chromium webkit
+          vp exec playwright install-deps webkit
 
       # 指紋の比較は OS をまたげないので、CI からは外す。理由は
       # src/card/fingerprint.test.ts の先頭に書いてある
