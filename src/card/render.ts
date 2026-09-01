@@ -447,10 +447,10 @@ function computeGlowBlur(scene: CardScene, box: CardBox, scale: number, strength
   if (margin <= 0) return 0
 
   // 得られた上限は拡大後の値なので、ローカル座標に戻してから使う。
-  // 端からわずかに漏れる裾は fadeFrameEdges が最後に落とすので、
-  // ここで光を削り込みすぎない
+  // これは保険で、ふだんは素の値のほうが小さい。スラムで一気に膨らんだときだけ
+  // ここが効いて、光がフレームからはみ出すのを止める
   const maxBlur = (margin * 0.85) / scale
-  return Math.min(box.unit * 0.4 * strength, maxBlur)
+  return Math.min(box.unit * 0.38 * strength, maxBlur)
 }
 
 /** 枠に使うグラデーションを作る。虹だけは時間で回るコニックグラデーションにする。 */
@@ -1064,10 +1064,10 @@ function drawCard(
 
     // 遠くまで届く薄い拡散を上から重ねる。一層のまま濃くすると縁が硬くなるが、
     // 広い層を足すと光量を上げても自然に散る。
-    // ここは端まで届きうるが、最後に fadeFrameEdges が縁を落とすので切れ目は出ない
-    ctx.globalAlpha *= 0.5
-    ctx.shadowBlur = glowBlur * 2.2
-    ctx.fill()
+    // ただし広げすぎるとフレームの余白に収まらず、裾を fadeFrameEdges が
+    // 断ち切って楕円の輪郭が浮く。端まで届く前に消えきる濃さと広さにする
+    ctx.globalAlpha *= 0.3
+    ctx.shadowBlur = glowBlur * 1.5
     ctx.fill()
     ctx.restore()
   }
