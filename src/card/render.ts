@@ -1017,11 +1017,12 @@ function superellipsePath(
 }
 
 function fadeFrameEdges(ctx: Canvas2dContext, width: number, height: number): void {
-  // グロー自体が端に届く前に消えるようになったので、マスクは保険でよい。
-  // 幅を取ると光が届く前に落ちてしまうため、端ぎりぎりまで寄せる。
+  // 幅を広く取るほど光は緩やかに溶けて消える。ただし広げすぎると、
+  // スラムで 1.6 倍に膨らんだカードの角にまで届いて本体が透けてしまう。
+  // 実測では短辺の 7% で本体が削られ始めるので、その手前で止める。
   // ぼかしは幅の半分。canvas の blur(r) は 1.5r ほどで消えるため、
   // 輪郭から外へ 0.75 * fade で 0 になり、端まで余裕が残る
-  const fade = Math.min(width, height) * 0.015
+  const fade = Math.min(width, height) * 0.06
   ctx.save()
   ctx.globalCompositeOperation = 'destination-in'
   ctx.filter = `blur(${fade / 2}px)`
