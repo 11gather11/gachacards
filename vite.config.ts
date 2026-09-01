@@ -77,6 +77,35 @@ ${urls}
   }
 }
 
+/**
+ * Google AdSense のタグを、パブリッシャー ID が渡されたときだけ差し込む。
+ *
+ * アクセス解析と同じ理由で条件付きにしてある。手元とプルリクのビルドから
+ * 広告配信のリクエストが飛ぶのは、開発の邪魔になるうえ意味がない。
+ *
+ * ID はページに載せて使う公開値で、秘密ではない。
+ */
+function googleAdsense(): Plugin {
+  return {
+    name: 'google-adsense',
+    transformIndexHtml() {
+      const client = process.env.ADSENSE_CLIENT
+      if (!client) return []
+      return [
+        {
+          tag: 'script',
+          injectTo: 'head',
+          attrs: {
+            async: true,
+            src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`,
+            crossorigin: 'anonymous',
+          },
+        },
+      ]
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => ({
   // StyleX はビルド時に静的 CSS へ畳む。react より先に置く必要がある。
   // 生成された CSS は、既存の CSS アセット（global.css）に注入される
@@ -88,6 +117,7 @@ export default defineConfig(({ mode }) => ({
     }),
     react(),
     cloudflareAnalytics(),
+    googleAdsense(),
     sitemap('https://gachacards.11gather11.com'),
   ],
   // カードの描画は OffscreenCanvas・float16 キャンバス・コニックグラデーション・
