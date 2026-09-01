@@ -362,6 +362,38 @@ main に push すると GitHub Actions が回り、整形・lint・型チェッ�
 手元から出したいときは `pnpm exec wrangler deploy`。
 何が上がるかだけ見たいなら `--dry-run` を付ける。
 
+## 公開用の画像
+
+OGP 画像は、このツール自身の描画コードで作っている。イラストを別に用意するより、
+実際に出るものを見せたほうが伝わるし、演出を変えたときに作り直すだけで追随できる。
+
+```bash
+pnpm exec vp dev              # 別の端末で開発サーバを立てておく
+pnpm exec vp run assets       # public/og.jpg と apple-touch-icon.png を作る
+```
+
+favicon は手書きの SVG（`public/favicon.svg`）。16x16 まで縮むので、要素は
+カードの枠だけに絞ってある。中身を描くと潰れてただの四角になる。
+
+`index.html` の `og:url` と `og:image` は絶対 URL でないと拾われないので、
+公開先のドメインに合わせること。
+
+## アクセス解析
+
+Cloudflare Web Analytics を、トークンが渡されたときだけ差し込む。Cookie を
+使わないので同意バナーが要らない。
+
+```bash
+CF_ANALYTICS_TOKEN=xxxxx pnpm build
+```
+
+トークンはページに載せて使う公開値で、秘密ではない。渡さなければビーコンは
+出力されない。独自ドメインを Cloudflare 経由にしている場合は、ダッシュボードから
+自動で挿す設定もあるので、そのときはこの環境変数を渡さなくてよい。
+
+素の `%VITE_...%` を HTML に直書きしないのは、環境変数が無いビルドでその文字列が
+そのまま残り、毎回無効なトークンでリクエストが飛ぶため。
+
 ## 開発
 
 Vite+ を使っている。詳細は `CLAUDE.md` を参照。
