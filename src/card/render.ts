@@ -738,6 +738,22 @@ function drawLabels(ctx: Canvas2dContext, scene: CardScene, box: CardBox): void 
   ctx.fillText(badge, pillX + pillWidth / 2, pillY + pillHeight / 2)
 }
 
+/**
+ * 集中線 1 本の色を返す。虹だけは枠と同じ色を一周ぶん割り当てる。
+ *
+ * 枠のコニックグラデーションと同じく、一周で虹が 1 回りするように並べる。
+ * 6 色を繰り返すと本数ぶん虹が何度も回ってしまい、枠との対応が崩れる。
+ *
+ * @param scene - 描画するシーン
+ * @param around - 一周のどこか。0 以上 1 未満
+ */
+function rayColorAt(scene: CardScene, around: number): string {
+  const { frameColors, rainbowFrame, glowColor } = scene.rarity
+  if (!rainbowFrame) return glowColor
+  const index = Math.floor(around * frameColors.length) % frameColors.length
+  return frameColors[index] ?? glowColor
+}
+
 /** 着地の瞬間に広がる衝撃波のリング。 */
 function drawShockwave(
   ctx: Canvas2dContext,
@@ -818,8 +834,8 @@ function drawImpactBurst(
     // 中心を透明にして、カードのアートを覆わずに外側だけ突き抜けさせる
     const ray = ctx.createLinearGradient(0, 0, x, y)
     ray.addColorStop(0, 'rgba(0,0,0,0)')
-    ray.addColorStop(0.45, '#ffffff')
-    ray.addColorStop(0.7, scene.rarity.glowColor)
+    ray.addColorStop(0.4, '#ffffff')
+    ray.addColorStop(0.58, rayColorAt(scene, i / rayCount))
     ray.addColorStop(1, 'rgba(0,0,0,0)')
     ctx.strokeStyle = ray
     ctx.lineWidth = unit * 0.014 * (1 - t)
