@@ -33,6 +33,18 @@
     <meta property="og:locale" content="ja_JP" />
 
     <meta name="twitter:card" content="summary_large_image" />
+
+    <!--
+      レイヤーの順を、どの CSS よりも先に宣言する。
+      順序は「最初に現れた場所」で決まるので、global.css に書くと
+      StyleX の priority* のほうが先に登録されてしまい、あとから来る
+      Astryx の reset に負けて padding や背景が消える。
+      素の要素は Astryx が整え、個別の指定は StyleX が勝つ並びにしたい。
+    -->
+    <style>
+      @layer reset, astryx-base, astryx-theme, priority1, priority2, priority3, priority4,
+        priority5;
+    </style>
   </head>
   <body>
     <div id="root"></div>

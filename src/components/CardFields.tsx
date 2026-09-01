@@ -1,3 +1,4 @@
+import { Slider } from '@astryxdesign/core'
 import * as stylex from '@stylexjs/stylex'
 
 import type { Settings } from '../settings.ts'
@@ -66,17 +67,16 @@ export function CardFields({ settings, update, effectiveBadge, estimatedSizeMb }
       </section>
 
       <section {...stylex.props(ui.field)}>
-        <label {...stylex.props(ui.label)} htmlFor="duration">
-          尺: {duration.toFixed(1)} 秒（推定 {estimatedSizeMb.toFixed(1)} MB）
-        </label>
-        <input
-          id="duration"
-          type="range"
+        <Slider
+          label="尺"
+          description={`推定 ${estimatedSizeMb.toFixed(1)} MB`}
           min={2}
           max={30}
           step={0.5}
           value={duration}
-          onChange={(event) => update('duration', Number(event.target.value))}
+          formatValue={(value) => `${value.toFixed(1)} 秒`}
+          valueDisplay="text"
+          onChange={(value: number) => update('duration', value)}
         />
       </section>
     </>

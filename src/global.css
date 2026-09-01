@@ -1,4 +1,12 @@
 /*
+ * Astryx のスタイル。事前コンパイル済みの CSS なので、StyleX の設定は要らない。
+ * reset は素の要素、astryx はコンポーネント、theme はトークンの値を持つ。
+ */
+@import '@astryxdesign/core/reset.css';
+@import '@astryxdesign/core/astryx.css';
+@import '@astryxdesign/theme-neutral/theme.css';
+
+/*
  * StyleX で表現できないグローバル指定だけを置く。
  * 要素そのものへのスタイルと color-scheme はクラスにできないため、
  * ここだけ素の CSS で残している。UI の見た目は StyleX 側にある。

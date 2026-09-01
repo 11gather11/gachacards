@@ -1,6 +1,8 @@
-# どちらも wrangler が抱えている。ビルドを許さないと
-# wrangler がローカルで動かない
 allowBuilds:
+  # StyleX の事前コンパイルを走らせる
+  '@astryxdesign/core': true
+  # どちらも wrangler が抱えている。ビルドを許さないと
+  # wrangler がローカルで動かない
   esbuild: true
   workerd: true
 catalog:
