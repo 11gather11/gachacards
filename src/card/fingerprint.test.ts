@@ -16,9 +16,10 @@
  * 「本物の変更」を測ると、動いたのは 13 セルでどれもずれは 1 段だった。
  * プラットフォーム差と同じ幅なので、1 段を許すと本物の変更まで見逃す。
  *
- * そのため指紋の比較は手元でだけ走らせる。リファクタは手元で起き、
- * pre-push フックが push の前に全部走らせるので、守りとしては足りている。
- * CI では、環境に依らない性質（描き直しの一致・縁が透明であること）を見る。
+ * そのため指紋の比較は手元の Chromium でだけ走らせる。リファクタは手元で
+ * 起き、pre-push フックが push の前に全部走らせるので、守りとしては足りている。
+ * CI と WebKit では、環境に依らない性質（描き直しの一致・縁が透明であること）を
+ * 見る。そちらは render.test.ts にある。
  */
 
 import { describe, expect, it } from 'vite-plus/test'
@@ -71,7 +72,15 @@ function fingerprint(data: Uint8ClampedArray, width: number, height: number): st
   return rows.join('\n')
 }
 
-describe('renderFrameBlurred の指紋', () => {
+/**
+ * Chromium かどうか。
+ *
+ * 指紋はエンジンごとに違うので、比べる相手を 1 つに決める必要がある。
+ * WebKit の UA にも Safari は入るが、Chrome は入らない。
+ */
+const isChromium = navigator.userAgent.includes('Chrome')
+
+describe.skipIf(!isChromium)('renderFrameBlurred の指紋', () => {
   for (const preset of RARITY_PRESETS) {
     for (const time of TEST_TIMES) {
       it(`${preset.id} の ${time.toFixed(2)} 秒が変わっていない`, () => {

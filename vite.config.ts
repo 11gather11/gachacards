@@ -26,7 +26,10 @@ export default defineConfig(({ mode }) => ({
       enabled: true,
       provider: playwright(),
       headless: true,
-      instances: [{ browser: 'chromium' }],
+      // Safari/iOS で崩れていないかを見るため WebKit も回す。
+      // ctx.filter のぼかしのように「設定は通るのに効かない」差は、
+      // 実際に描いてみないと分からない
+      instances: [{ browser: 'chromium' }, { browser: 'webkit' }],
     },
   },
   staged: {

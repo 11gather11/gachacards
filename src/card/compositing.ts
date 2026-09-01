@@ -118,6 +118,9 @@ const fadeLayerCache = new WeakMap<Canvas2dContext, Layer>()
 /** 虹のグローを染めるための 1 枚レイヤー。 */
 const glowLayerCache = new WeakMap<Canvas2dContext, Layer>()
 
+/** 縁のマスクを組み立てるための 1 枚レイヤー。 */
+const edgeMaskLayerCache = new WeakMap<Canvas2dContext, Layer>()
+
 /**
  * 中間レイヤー一式を用意する。合成先はクリア済みで返る。
  *
@@ -300,16 +303,42 @@ function superellipsePath(
 export function fadeFrameEdges(ctx: Canvas2dContext, width: number, height: number): void {
   // 幅を広く取るほど光は緩やかに溶けて消える。ただし広げすぎると、
   // スラムで 1.6 倍に膨らんだカードの角にまで届いて本体が透けてしまう。
-  // 実測では短辺の 7% で本体が削られ始めるので、その手前で止める。
-  // ぼかしは幅の半分。canvas の blur(r) は 1.5r ほどで消えるため、
-  // 輪郭から外へ 0.75 * fade で 0 になり、端まで余裕が残る
+  // 実測では短辺の 7% で本体が削られ始めるので、その手前で止める
   const fade = Math.min(width, height) * 0.06
+  const layer = acquireFrom(edgeMaskLayerCache, ctx, width, height)
+
+  // レイヤーが用意できない環境では、ぼかさずに切る。四角い縁が残るよりはまし
+  if (!layer) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'destination-in'
+    ctx.fillStyle = '#000'
+    superellipsePath(ctx, width / 2, height / 2, width / 2 - fade, height / 2 - fade)
+    ctx.fill()
+    ctx.restore()
+    return
+  }
+
+  // WebKit は ctx.filter のぼかしを、設定は受け付けるのに黙って無視する。
+  // Safari では縁が角の立った超楕円のまま切られ、光が板になって出ていた。
+  // 影のぼかしはどちらでも効くので、形を画面の外に置いて影だけを所定の位置に落とす。
+  //
+  // 影は sigma がぼかし半径の半分なので、filter の 2 倍を指定すると同じ広がりになる。
+  // 実測でも Chromium の filter blur(fade/2) とほぼ一致する
+  const away = width * 4
+  // 影の設定はこのレイヤーに残り続ける。次に取り出したときへ漏らさない
+  layer.ctx.save()
+  layer.ctx.shadowColor = '#000'
+  layer.ctx.shadowBlur = fade
+  layer.ctx.shadowOffsetX = away
+  layer.ctx.fillStyle = '#000'
+  superellipsePath(layer.ctx, width / 2 - away, height / 2, width / 2 - fade, height / 2 - fade)
+  layer.ctx.fill()
+  layer.ctx.restore()
+
+  // 影は destination-in の下では描かれないので、マスクは別に作って画像として掛ける
   ctx.save()
   ctx.globalCompositeOperation = 'destination-in'
-  ctx.filter = `blur(${fade / 2}px)`
-  ctx.fillStyle = '#000'
-  superellipsePath(ctx, width / 2, height / 2, width / 2 - fade, height / 2 - fade)
-  ctx.fill()
+  ctx.drawImage(layer.canvas, 0, 0)
   ctx.restore()
 }
 

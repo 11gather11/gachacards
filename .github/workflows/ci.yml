@@ -37,14 +37,14 @@ jobs:
       # 毎回入れ直すと 33 秒かかっていた（apt に 19 秒、ダウンロードに 13 秒）。
       # ブラウザ本体はキャッシュし、--with-deps も落とす。ubuntu-latest には
       # 必要な共有ライブラリが最初から入っているので、apt を回す必要がない
-      - name: Chromium のキャッシュ
+      - name: ブラウザのキャッシュ
         uses: actions/cache@v5.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
-      - name: Chromium を用意する
-        run: vp exec playwright install chromium
+      - name: ブラウザを用意する
+        run: vp exec playwright install chromium webkit
 
       # 指紋の比較は OS をまたげないので、CI からは外す。理由は
       # src/card/fingerprint.test.ts の先頭に書いてある

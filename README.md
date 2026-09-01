@@ -322,9 +322,20 @@ knip はそれを見つける。pre-push フックでは 4 つとも走らせて
 ### テスト
 
 カードの描画は OffscreenCanvas・float16 キャンバス・コニックグラデーション・
-canvas の blur フィルタに依存していて、どれも Node には無い。そのため
-Vitest のブラウザモードで、実物の Chromium（Playwright）の中で走らせている。
-初回だけ `pnpm exec playwright install chromium` が要る。
+影のぼかしに依存していて、どれも Node には無い。そのため Vitest の
+ブラウザモードで、実物のブラウザ（Playwright）の中で走らせている。
+初回だけ `pnpm exec playwright install chromium webkit` が要る。
+
+**Chromium と WebKit の両方で回している。** Safari と iOS で崩れていないかを
+見るため。実際、`ctx.filter` のぼかしは WebKit では設定が通るのに黙って
+無視される。縁のマスクがぼけないまま掛かり、光が角の立った板になって
+出ていた。設定できたかどうかでは分からず、描いて測って初めて見つかる類なので、
+エンジンを 2 つ回す価値がある。
+
+そのため縁のぼかしには `ctx.filter` を使わず、形を画面の外に置いて影だけを
+所定の位置に落としている（`fadeFrameEdges`）。影のぼかしはどちらのエンジンでも
+効く。影は sigma がぼかし半径の半分なので、`filter` の 2 倍を指定すると
+同じ広がりになる。
 
 `src/card/render.test.ts` は、全レアリティ × 5 つの時刻で 1 フレーム描き、
 その**指紋**を snapshot に残す。ピクセルをそのままハッシュにすると
@@ -341,7 +352,7 @@ Vitest のブラウザモードで、実物の Chromium（Playwright）の中で
 どこが変わったのかが読める。グローの色を 0.70 から 0.72 に変えるだけで
 3 つの snapshot が落ちる程度には効いている。
 
-**この指紋の比較は手元でだけ走らせている。** 同じ Chromium でも macOS と
+**この指紋の比較は手元の Chromium でだけ走らせている。** 同じ Chromium でも macOS と
 Linux ではぼかしの結果が 1 段ずれることがあり、実測で 30 件中 14 件が
 食い違った。丸めを粗くしても境目は残るので閾値では消せない。
 許容誤差でも駄目で、上の「本物の変更」を測ると動いたのは 13 セル、
