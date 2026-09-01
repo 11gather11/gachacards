@@ -6,6 +6,11 @@
   // 静的アセットだけの Worker。main を書かないと、リクエストは
   // すべて assets から返される。サーバ側でやることが何も無いので
   // コードは持たない
+  // 独自ドメインで出す。custom_domain を付けると、wrangler が DNS レコードも
+  // 作ってくれる（11gather11.com は Cloudflare 管理下にある）。
+  // workers.dev の URL は残るが、共有するのはこちら
+  "routes": [{ "pattern": "gachacards.11gather11.com", "custom_domain": true }],
+
   "assets": {
     "directory": "./dist",
 
