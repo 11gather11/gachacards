@@ -18,6 +18,7 @@ import { OutputFields } from './components/OutputFields.tsx'
 import { PreviewCanvas } from './components/PreviewCanvas.tsx'
 import { RarityPicker } from './components/RarityPicker.tsx'
 import { toErrorMessage } from './errors.ts'
+import { canPlayAlpha } from './export/alpha-playback.ts'
 import { canExportTransparentWebm, exportWebm } from './export/webm.ts'
 import { colors } from './theme.stylex.ts'
 import type { Artwork } from './types.ts'
@@ -213,6 +214,8 @@ export function App() {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ExportedFile | null>(null)
   const [isSupported, setIsSupported] = useState<boolean | null>(null)
+  // 書き出したものの透過が、このブラウザで見えるかどうか
+  const [alphaVisible, setAlphaVisible] = useState(true)
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -313,9 +316,12 @@ export function App() {
       })
 
       // 自動で保存はしない。何本も試して気に入ったものだけ残せるようにする
+      const url = URL.createObjectURL(exported.blob)
+      // 下のプレビューが不透過に見える環境があるので、先に測っておく
+      setAlphaVisible(await canPlayAlpha(url))
       setResult({
         blob: exported.blob,
-        url: URL.createObjectURL(exported.blob),
+        url,
         // 出来上がったファイルから seed を辿れるよう、名前に焼き込む
         fileName: `${artwork?.fileName ?? 'card'}-${rarityId}-s${seed}.webm`,
         summary: `${(exported.blob.size / 1024 / 1024).toFixed(2)} MB / ${exported.frameCount} フレーム / ${(exported.elapsedMs / 1000).toFixed(1)} 秒`,
@@ -387,7 +393,9 @@ export function App() {
           )}
           {isSupported === false && (
             <p {...stylex.props(ui.notice, ui.noticeError)}>
-              このブラウザは VP9 エンコードに対応していません。Chrome か Edge で開いてください。
+              このブラウザは VP9 の書き出しに対応していません。パソコンの Chrome か Edge で
+              開いてください。iPhone・iPad では、Chrome や Edge も中身は Safari と同じ
+              仕組みなので、同じ端末でブラウザを変えても書き出せません。
             </p>
           )}
           {error && <p {...stylex.props(ui.notice, ui.noticeError)}>{error}</p>}
@@ -431,7 +439,7 @@ export function App() {
           <div {...stylex.props(styles.result)}>
             <div {...stylex.props(styles.resultHead)}>
               <span {...stylex.props(ui.label)}>
-                書き出した WebM（透過のまま再生中） — {result.summary}
+                書き出した WebM{alphaVisible && '（透過のまま再生中）'} — {result.summary}
               </span>
               <button
                 type="button"
@@ -441,6 +449,17 @@ export function App() {
                 ⬇ {result.fileName} を保存
               </button>
             </div>
+            {!alphaVisible && (
+              <p {...stylex.props(ui.notice)}>
+                このブラウザは透過付きの WebM を再生できないため、下のプレビューは背景が
+                黒く出ます。<strong>ファイル自体は正しく透過しています</strong>ので、
+                そのまま保存して Streamlabs で使えます。
+                <br />
+                見た目を確かめたい場合は、パソコンの Chrome か Edge で開いてください。 iPhone・iPad
+                では、Chrome や Edge も中身は Safari と同じ仕組みなので、
+                同じ端末でブラウザを変えても結果は変わりません。
+              </p>
+            )}
             <video
               src={result.url}
               autoPlay
