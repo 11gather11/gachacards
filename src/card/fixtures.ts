@@ -9,8 +9,8 @@ import { buildIntroStages, createIntroParticles } from './intro.ts'
 import { createParticles } from './particles.ts'
 import type { RarityId } from './rarity.ts'
 import { RARITY_PRESETS, getRarity } from './rarity.ts'
-import type { CardScene } from './render.ts'
-import { computeCardSize, computeTimeline } from './render.ts'
+import type { CardScene } from './scene.ts'
+import { computeCardSize, computeTimeline } from './scene.ts'
 
 /** テストで使うフレームの大きさ。既定のサイズプリセット（横長）に合わせる。 */
 export const TEST_FRAME = { width: 900, height: 700 } as const

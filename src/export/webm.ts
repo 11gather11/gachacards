@@ -9,8 +9,8 @@
 
 import { BufferTarget, CanvasSource, Output, WebMOutputFormat, canEncodeVideo } from 'mediabunny'
 
-import type { CardScene } from '../card/render.ts'
 import { renderFrameBlurred } from '../card/render.ts'
+import type { CardScene } from '../card/scene.ts'
 
 /**
  * シャッター開角。フレーム時間のうち、どれだけ露光するか。

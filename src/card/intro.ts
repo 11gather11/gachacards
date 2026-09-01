@@ -9,10 +9,10 @@
  * 途中でどの色を通すかも、演出全体の長さも、呼び出し側から指定する。
  */
 
+import type { Canvas2dContext } from './compositing.ts'
 import { createRng, easeOutCubic, progress, pulse, randomBetween } from './math.ts'
 import type { RarityId, RarityPreset } from './rarity.ts'
 import { RARITY_PRESETS } from './rarity.ts'
-import type { Canvas2dContext } from './render.ts'
 
 /** UI から選ぶ入り演出の設定。`"off"` なら演出そのものを出さない。 */
 export type IntroMode = 'off' | 'on'

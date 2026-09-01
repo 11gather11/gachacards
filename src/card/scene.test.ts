@@ -11,7 +11,7 @@ import { buildIntroStages, computeIntroDuration, listIntermediateRarities } from
 import { createRng } from './math.ts'
 import { createParticles, particleStateAt } from './particles.ts'
 import { getRarity } from './rarity.ts'
-import { computeCardSize, computeTimeline } from './render.ts'
+import { computeCardSize, computeTimeline } from './scene.ts'
 
 describe('computeCardSize', () => {
   it('カードは 2:3 のまま、向きだけが入れ替わる', () => {

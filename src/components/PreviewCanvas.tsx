@@ -1,8 +1,8 @@
 import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState } from 'react'
 
-import type { CardScene } from '../card/render.ts'
 import { renderFrameBlurred } from '../card/render.ts'
+import type { CardScene } from '../card/scene.ts'
 import { colors } from '../theme.stylex.ts'
 import { ui } from '../ui.ts'
 
