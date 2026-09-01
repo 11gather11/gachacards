@@ -19,6 +19,9 @@ export default defineConfig(({ mode }) => ({
   // テストは実物の Chromium の中で走らせる
   test: {
     include: ['src/**/*.test.ts'],
+    // テストが終わったあと、何かが Node の終了を妨げていて既定の 10 秒を
+    // 待たされる。結果は出きっているので、待つ意味がない
+    teardownTimeout: 1000,
     browser: {
       enabled: true,
       provider: playwright(),
