@@ -36,12 +36,10 @@ jobs:
       - name: Chromium を用意する
         run: vp exec playwright install --with-deps chromium
 
-      # 指紋の比較は OS をまたげないので、CI では飛ばす。
-      # 環境に依らない性質だけを見る（テストの先頭のコメントに理由を書いてある）
+      # 指紋の比較は OS をまたげないので、CI からは外す。理由は
+      # src/card/fingerprint.test.ts の先頭に書いてある
       - name: テスト
-        run: vp test run
-        env:
-          VITE_CI: 'true'
+        run: vp test run --exclude '**/fingerprint.test.ts'
 
       - name: 本番ビルド
         run: vp run build
