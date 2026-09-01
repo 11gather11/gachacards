@@ -30,3 +30,6 @@ dist-ssr
 
 # Wrangler の作業ディレクトリ
 .wrangler
+
+# vitest がテスト失敗時に残すスクリーンショット
+__screenshots__
