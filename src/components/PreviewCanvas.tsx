@@ -13,17 +13,30 @@ const styles = stylex.create({
     gap: 12,
     alignItems: 'center',
     maxWidth: '100%',
+    // 親のグリッド領域いっぱいを取る。取らないと中身の高さで決まってしまい、
+    // 下に何か増えたときにキャンバスが縮まない
+    height: '100%',
+    minHeight: 0,
   },
   stage: {
     display: 'grid',
     placeItems: 'center',
+    flex: 1,
     minHeight: 0,
+    maxWidth: '100%',
   },
   canvas: {
-    maxHeight: '62vh',
+    // 高さは vh ではなく親に対して決める。書き出し結果が出て場所が狭まったら、
+    // そのぶんキャンバスが縮んで画面に収まり続ける
+    maxHeight: '100%',
     maxWidth: '100%',
     height: 'auto',
     width: 'auto',
+    // グリッドの子は min-height: auto、つまり「中身より小さくならない」が既定。
+    // canvas は 900x700 という実寸を持つ置換要素なので、これが下限として効いて
+    // max-height を無視してしまう。0 を許して初めて縮む
+    minHeight: 0,
+    minWidth: 0,
   },
   controls: {
     display: 'flex',

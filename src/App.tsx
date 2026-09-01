@@ -43,6 +43,10 @@ const styles = stylex.create({
     display: 'grid',
     gridTemplateColumns: { default: '340px 1fr', '@media (max-width: 900px)': '1fr' },
     minHeight: '100vh',
+    // 画面の高さで頭打ちにして、書き出し結果が増えたぶんはプレビューを縮めて吸収する。
+    // ここが伸びると、結果が出た瞬間にページ全体がスクロールしてカードが見切れる。
+    // 縦に積む狭い画面では、逆に潰れてしまうので外す
+    height: { default: '100vh', '@media (max-width: 900px)': 'auto' },
   },
   panel: {
     display: 'flex',
@@ -72,6 +76,8 @@ const styles = stylex.create({
     gap: 14,
     padding: 20,
     minWidth: 0,
+    // flex の子は既定で内容より小さくならない。0 を許してプレビューを縮められるようにする
+    minHeight: 0,
   },
   toolbar: {
     display: 'flex',
@@ -98,6 +104,7 @@ const styles = stylex.create({
     display: 'grid',
     placeItems: 'center',
     flex: 1,
+    minHeight: 0,
     padding: 16,
     borderWidth: 1,
     borderStyle: 'solid',
@@ -142,7 +149,7 @@ const styles = stylex.create({
     flexWrap: 'wrap',
   },
   resultVideo: {
-    maxHeight: '24vh',
+    maxHeight: '22vh',
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderStyle: 'solid',
