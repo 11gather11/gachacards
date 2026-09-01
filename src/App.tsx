@@ -472,7 +472,7 @@ export function App() {
             type="text"
             {...stylex.props(ui.input)}
             value={title}
-            placeholder="例: ゲリラ豪雨"
+            placeholder="例: 伝説のドラゴン"
             onChange={(event) => setTitle(event.target.value)}
           />
           <input
