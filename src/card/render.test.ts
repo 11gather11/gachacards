@@ -5,9 +5,20 @@
  * OffscreenCanvas・float16・コニックグラデーション・blur フィルタを使うので、
  * Node では動かない。実物の Chromium の中で走らせている（vite.config.ts の test.browser）。
  *
- * ピクセルをそのままハッシュにすると、ラスタライザの 1 段の違いでも落ちて
- * 使い物にならない。代わりに画面を格子に割った平均を、粗い刻みに丸めて残す。
- * 演出の位置や強さが変われば必ず動くが、丸め誤差では動かない粒度にしてある。
+ * ピクセルをそのままハッシュにすると、ラスタライザの 1 段の違いでも落ちる。
+ * 代わりに画面を格子に割った平均を、粗い刻みに丸めて残している。
+ *
+ * それでも指紋は OS をまたげない。同じ Chromium でも macOS と Linux では
+ * ぼかしの結果が 1 段ずれることがあり、実測で 30 件中 14 件が食い違った。
+ * 丸めをどれだけ粗くしても境目は残るので、閾値では消せない。
+ *
+ * 許容誤差でも区別できない。GLOW_TINT を 0.70 から 0.72 に変える
+ * 「本物の変更」を測ると、動いたのは 13 セルでどれもずれは 1 段だった。
+ * プラットフォーム差と同じ幅なので、1 段を許すと本物の変更まで見逃す。
+ *
+ * そのため指紋の比較は手元でだけ走らせる。リファクタは手元で起き、
+ * pre-push フックが push の前に全部走らせるので、守りとしては足りている。
+ * CI では、環境に依らない性質（描き直しの一致・縁が透明であること）を見る。
  */
 
 import { describe, expect, it } from 'vite-plus/test'
@@ -15,6 +26,9 @@ import { describe, expect, it } from 'vite-plus/test'
 import { TEST_FRAME, TEST_TIMES, buildTestScene } from './fixtures.ts'
 import { RARITY_PRESETS } from './rarity.ts'
 import { renderFrameBlurred } from './render.ts'
+
+/** CI かどうか。ワークフローの側で `VITE_CI` を渡している。 */
+const isCI = Boolean(import.meta.env.VITE_CI)
 
 /** 指紋を取る格子の細かさ。読んで形が分かる程度に粗くしてある。 */
 const COLS = 12
@@ -87,7 +101,8 @@ function edgeAlpha(data: Uint8ClampedArray, width: number, height: number): numb
   return max
 }
 
-describe('renderFrameBlurred', () => {
+// 指紋は OS ごとに違うので、手元でだけ比べる
+describe.skipIf(isCI)('renderFrameBlurred の指紋', () => {
   for (const preset of RARITY_PRESETS) {
     for (const time of TEST_TIMES) {
       it(`${preset.id} の ${time.toFixed(2)} 秒が変わっていない`, () => {
@@ -96,7 +111,9 @@ describe('renderFrameBlurred', () => {
       })
     }
   }
+})
 
+describe('renderFrameBlurred', () => {
   it('同じ時刻を描き直しても同じ絵になる', () => {
     const first = renderOnce('rainbow', 4.5)
     const second = renderOnce('rainbow', 4.5)
