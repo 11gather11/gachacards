@@ -173,6 +173,9 @@ const supportsFloat16 = ((): boolean => {
   }
 })()
 
+/** 虹のグローを枠色で染める強さ。1 で純色、0 で白のまま。 */
+const GLOW_TINT = 0.7
+
 /** ディザノイズのタイルの一辺（px）。 */
 const NOISE_TILE = 128
 
@@ -222,6 +225,9 @@ const layerCache = new WeakMap<Canvas2dContext, Layers>()
 /** カードのフェード合成に使う 1 枚レイヤー。こちらも描画先ごとに持つ。 */
 const fadeLayerCache = new WeakMap<Canvas2dContext, Layer>()
 
+/** 虹のグローを染めるための 1 枚レイヤー。 */
+const glowLayerCache = new WeakMap<Canvas2dContext, Layer>()
+
 /**
  * 中間レイヤー一式を用意する。合成先はクリア済みで返る。
  *
@@ -263,14 +269,32 @@ function acquireLayers(target: Canvas2dContext, width: number, height: number): 
  * @returns 使えるレイヤー。OffscreenCanvas が使えない環境では `null`
  */
 function acquireFadeLayer(target: Canvas2dContext, width: number, height: number): Layer | null {
+  return acquireFrom(fadeLayerCache, target, width, height)
+}
+
+/**
+ * キャッシュから 1 枚レイヤーを取り出す。中身はクリア済みで返る。
+ *
+ * @param cache - 取り出し先のキャッシュ
+ * @param target - このレイヤーを使う描画先のコンテキスト
+ * @param width - レイヤーの幅（px）
+ * @param height - レイヤーの高さ（px）
+ * @returns 使えるレイヤー。OffscreenCanvas が使えない環境では `null`
+ */
+function acquireFrom(
+  cache: WeakMap<Canvas2dContext, Layer>,
+  target: Canvas2dContext,
+  width: number,
+  height: number,
+): Layer | null {
   if (typeof OffscreenCanvas === 'undefined') return null
 
-  let layer = fadeLayerCache.get(target)
+  let layer = cache.get(target)
   if (!layer || layer.canvas.width !== width || layer.canvas.height !== height) {
     const created = createLayer(width, height, supportsFloat16)
     if (!created) return null
     layer = created
-    fadeLayerCache.set(target, layer)
+    cache.set(target, layer)
   }
 
   layer.ctx.clearRect(0, 0, width, height)
@@ -451,6 +475,91 @@ function computeGlowBlur(scene: CardScene, box: CardBox, scale: number, strength
   // ここが効いて、光がフレームからはみ出すのを止める
   const maxBlur = (margin * 0.85) / scale
   return Math.min(box.unit * 0.38 * strength, maxBlur)
+}
+
+/**
+ * カードの下に敷くグローを 1 色で描く。
+ *
+ * @param ctx - 描画先。カード中心を原点とした座標系に入っていること
+ * @param box - カードの矩形
+ * @param color - 光の色
+ * @param blur - ぼかし半径（px）
+ */
+function paintGlow(ctx: Canvas2dContext, box: CardBox, color: string, blur: number): void {
+  ctx.save()
+  ctx.shadowColor = color
+  ctx.fillStyle = 'rgba(0,0,0,0.9)'
+  roundedRectPath(ctx, box)
+
+  // 締まった内側の光。一度の shadow では薄いので、同じ形を重ねて濃くする。
+  // ここを重ねすぎると芯が硬くなるので、濃さは外側の拡散で稼ぐ
+  ctx.shadowBlur = blur
+  ctx.fill()
+  ctx.fill()
+
+  // 遠くまで届く薄い拡散を上から重ねる。一層のまま濃くすると縁が硬くなるが、
+  // 広い層を足すと光量を上げても自然に散る。
+  // ただし広げすぎるとフレームの余白に収まらず、裾を fadeFrameEdges が
+  // 断ち切って楕円の輪郭が浮く。端まで届く前に消えきる濃さと広さにする
+  ctx.globalAlpha *= 0.35
+  ctx.shadowBlur = blur * 1.5
+  ctx.fill()
+  ctx.restore()
+}
+
+/**
+ * グローを描く。虹だけは枠と同じコニックグラデーションで染める。
+ *
+ * `shadowColor` には単色しか渡せないので、いったん白で形だけ作り、
+ * `source-in` で色を差し替える。枠と同じ角度で回すため、
+ * それぞれの辺で halo と枠の色がそろう。
+ *
+ * @param ctx - 描画先。カード中心を原点とした座標系に入っていること
+ * @param scene - 描画するシーン
+ * @param box - カードの矩形
+ * @param blur - ぼかし半径（px）。0 以下なら何も描かない
+ * @param time - アニメーション先頭からの経過秒
+ */
+function drawGlow(
+  ctx: Canvas2dContext,
+  scene: CardScene,
+  box: CardBox,
+  blur: number,
+  time: number,
+): void {
+  if (blur <= 0) return
+
+  const layer = scene.rarity.rainbowFrame
+    ? acquireFrom(glowLayerCache, ctx, scene.width, scene.height)
+    : null
+  if (!layer) {
+    paintGlow(ctx, box, scene.rarity.glowColor, blur)
+    return
+  }
+
+  // 変換も合成モードも、次にこのレイヤーを使うときまで残る。変換が残っていると
+  // 次回の clearRect がずれた範囲を消し、前のフレームが四角く居座る
+  layer.ctx.save()
+  // 呼び出し元と同じ座標系に合わせる。グラデーションの中心もカード中心になる
+  layer.ctx.setTransform(ctx.getTransform())
+  paintGlow(layer.ctx, box, '#ffffff', blur)
+
+  // 白のまま残した分だけ明るさが保たれる。純色は白より輝度がずっと低いので、
+  // 完全に置き換えると halo が急に暗く見える
+  layer.ctx.globalCompositeOperation = 'source-atop'
+  layer.ctx.globalAlpha = GLOW_TINT
+  layer.ctx.fillStyle = createFrameStyle(layer.ctx, scene, box, time)
+  // グラデーションの座標は塗る時点の変換で決まるので、変換は掛けたまま塗る。
+  // 拡大率がどうであれフレーム全体を覆えるだけの大きさを取る
+  const cover = Math.max(scene.width, scene.height) * 2
+  layer.ctx.fillRect(-cover, -cover, cover * 2, cover * 2)
+  layer.ctx.restore()
+
+  // レイヤーはフレームと同じ大きさなので、変換を外して等倍で戻す
+  ctx.save()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.drawImage(layer.canvas, 0, 0)
+  ctx.restore()
 }
 
 /** 枠に使うグラデーションを作る。虹だけは時間で回るコニックグラデーションにする。 */
@@ -1051,27 +1160,7 @@ function drawCard(
   const glowPulse = 0.85 + 0.15 * Math.sin(time * 2.4)
   const glowStrength = scene.rarity.glowStrength * glowPulse + transform.impact * 0.4
   const glowBlur = computeGlowBlur(scene, box, transform.scale, glowStrength)
-  if (glowBlur > 0) {
-    ctx.save()
-    ctx.shadowColor = scene.rarity.glowColor
-    ctx.fillStyle = 'rgba(0,0,0,0.9)'
-    roundedRectPath(ctx, box)
-
-    // 締まった内側の光。一度の shadow では薄いので、同じ形を重ねて濃くする。
-    // ここを重ねすぎると芯が硬くなるので、濃さは外側の拡散で稼ぐ
-    ctx.shadowBlur = glowBlur
-    ctx.fill()
-    ctx.fill()
-
-    // 遠くまで届く薄い拡散を上から重ねる。一層のまま濃くすると縁が硬くなるが、
-    // 広い層を足すと光量を上げても自然に散る。
-    // ただし広げすぎるとフレームの余白に収まらず、裾を fadeFrameEdges が
-    // 断ち切って楕円の輪郭が浮く。端まで届く前に消えきる濃さと広さにする
-    ctx.globalAlpha *= 0.35
-    ctx.shadowBlur = glowBlur * 1.5
-    ctx.fill()
-    ctx.restore()
-  }
+  drawGlow(ctx, scene, box, glowBlur, time)
 
   // カード内部の描画。角丸でクリップして、はみ出しを全部切る
   ctx.save()
