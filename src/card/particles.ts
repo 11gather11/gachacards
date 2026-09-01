@@ -10,7 +10,7 @@ import { createRng, randomBetween, randomPick } from './math.ts'
 import type { RarityPreset } from './rarity.ts'
 
 /** 粒の描画形状。 */
-export type ParticleShape = 'circle' | 'star' | 'shard'
+type ParticleShape = 'circle' | 'star' | 'shard'
 
 /** 1 粒分の、時間に依存しないパラメータ。 */
 export interface Particle {

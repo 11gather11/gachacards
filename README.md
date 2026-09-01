@@ -163,7 +163,7 @@ Streamlabs 側の表示時間は 2〜300 秒まで指定できるが、このア
 
 ### プレビューと書き出しが絶対にズレないようにしている
 
-描画は `renderFrame(ctx, time, scene)`（`src/card/render.ts`）に集約されていて、
+描画は `renderFrameBlurred(ctx, time, scene, blur)`（`src/card/render.ts`）に集約されていて、
 画面のプレビューも WebM の書き出しも、この同じ関数だけを呼ぶ。
 結果が時刻 `time` のみに依存する純関数なので、見えているものがそのまま出る。
 
@@ -277,5 +277,9 @@ Vite+ を使っている。詳細は `CLAUDE.md` を参照。
 
 ```bash
 pnpm exec vp check --fix   # format + lint + 型チェック
+pnpm exec vp run knip      # どこからも使われていない export を探す
 pnpm build                 # 本番ビルド
 ```
+
+`vp check` は型が通るかしか見ないので、使われなくなった export はそのまま残る。
+knip はそれを見つける。pre-push フックでも走らせている。

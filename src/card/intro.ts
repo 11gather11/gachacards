@@ -162,7 +162,7 @@ export function createIntroParticles(count: number, seed: number): IntroParticle
  * @param stages - 色の段取り
  * @param p - 入り演出内の正規化時刻（0-1）
  */
-export function currentStage(stages: readonly IntroStage[], p: number): IntroStage {
+function currentStage(stages: readonly IntroStage[], p: number): IntroStage {
   let current = stages[0]!
   for (const stage of stages) {
     if (p >= stage.at) current = stage

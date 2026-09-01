@@ -1247,7 +1247,7 @@ export function renderFrameBlurred(
  * ctx.clearRect(0, 0, scene.width, scene.height);
  * renderFrame(ctx, 1.2, scene);
  */
-export function renderFrame(ctx: Canvas2dContext, time: number, scene: CardScene): void {
+function renderFrame(ctx: Canvas2dContext, time: number, scene: CardScene): void {
   const timeline = computeTimeline(scene.duration, scene.loop, scene.introDuration)
 
   // 入り演出はカードのフェードとは別物なので、レイヤーを挟まずそのまま描く

@@ -7,7 +7,7 @@
 export type RarityId = 'white' | 'blue' | 'green' | 'red' | 'gold' | 'rainbow'
 
 /** パーティクルの見た目と挙動のタイプ。 */
-export type ParticleKind =
+type ParticleKind =
   /** パーティクルを出さない */
   | 'none'
   /** 上に舞い上がる細かい粒 */
@@ -18,7 +18,7 @@ export type ParticleKind =
   | 'burst'
 
 /** カードの登場アニメーションのタイプ。 */
-export type EntranceKind =
+type EntranceKind =
   /** ふわっとフェードイン */
   | 'fade'
   /** 下からせり上がる */

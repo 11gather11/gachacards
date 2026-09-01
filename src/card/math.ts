@@ -37,12 +37,6 @@ export function easeInCubic(t: number): number {
   return t ** 3
 }
 
-/** 目標を一度行き過ぎてから戻る。勢いのある登場向け。 */
-export function easeOutBack(t: number, overshoot = 1.7): number {
-  const c = overshoot + 1
-  return 1 + c * (t - 1) ** 3 + overshoot * (t - 1) ** 2
-}
-
 /**
  * 目標地点で数回バウンドしてから止まる。叩きつける登場（slam）向け。
  */
